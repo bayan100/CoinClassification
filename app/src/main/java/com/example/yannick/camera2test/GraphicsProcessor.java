@@ -7,6 +7,7 @@ import android.util.Log;
 import org.opencv.android.Utils;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfInt;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
@@ -255,14 +256,33 @@ public class GraphicsProcessor
 
             for (int i = 0; i < contours.size(); i++) {
                 ArrayList<MatOfPoint> mp = new ArrayList<MatOfPoint>();
-                mp.add(contours.get(i).data);
 
-                contours.get(i).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
+                /*MatOfInt hull = new MatOfInt();
+                Imgproc.convexHull(contours.get(i).data, hull);
+                int[] p = hull.toArray();
+                Point[] q = contours.get(i).data.toArray();
+                Point[] points = new Point[p.length];
+
+                StringBuilder sb = new StringBuilder();
+                for (int j = 0; j < p.length; j++) {
+                    sb.append(p[j] + ", ");
+                    points[j] = q[p[j]];
+                }
+                Log.d("DRAWCONTOUR", sb.toString());
+
+                //mp.add(contours.get(i).data);
+                MatOfPoint matOfPoint = new MatOfPoint();
+                matOfPoint.fromArray(points);*/
+
+                mp.add(contours.get(i).convexContour);
+
+                Imgproc.polylines(contoursMat, mp,false, new Scalar((contours.size() - i) * (255 / contours.size()), i * (255 / contours.size()), 0));
+                //contours.get(i).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
                 //Imgproc.drawContours(contoursMat, mp, 0, new Scalar((contours.size() - i) * (255 / contours.size()), i * (255 / contours.size()), 0));
             }
 
-            //data.setMat(contoursMat);
-            data.setBitmap(contoursBM);
+            data.setMat(contoursMat);
+            //data.setBitmap(contoursBM);
             return Status.PASSED;
         }
         return Status.FAILED;

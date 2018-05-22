@@ -58,7 +58,7 @@ public class PictureDisplayActivity extends AppCompatActivity {
 
                     // Do manipulation
                     GraphicsProcessor.initParameters();
-                    GraphicsProcessor.parameter.put("MBksize", 11f);
+                    GraphicsProcessor.parameter.put("MBksize", 7f);
                     GraphicsProcessor.parameter.put("EDthreshold1", 30f);
                     GraphicsProcessor.parameter.put("EDthreshold2", 100f);
 
@@ -105,13 +105,13 @@ public class PictureDisplayActivity extends AppCompatActivity {
         String filepath = intent.getStringExtra("File");
 
         try {
-            //String testpath = "/sdcard/Pictures/Testpictures/1Euro3.jpg";
-            //bitmap = BitmapFactory.decodeFile(testpath);
+            String testpath = "/sdcard/Pictures/Testpictures/hand1.jpg";
+            bitmap = BitmapFactory.decodeFile(testpath);
 
             //Log.d("BITMAP", (bitmap == null) + "");
 
-            bitmap = BitmapFactory.decodeStream(this.openFileInput(filepath));
-            bitmap = bitmap.copy( Bitmap.Config.ARGB_8888 , true);
+            //bitmap = BitmapFactory.decodeStream(this.openFileInput(filepath));
+            //bitmap = bitmap.copy( Bitmap.Config.ARGB_8888 , true);
 
             Log.d("SUCCESS", "Loaded: " + filepath);
             imageView.setImageBitmap(bitmap);
