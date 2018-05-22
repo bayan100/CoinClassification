@@ -15,6 +15,8 @@ public class Contour implements Comparable {
     double[] size;
     double area;
 
+    double isLineConfidence;
+
     public Contour(MatOfPoint data)
     {
         this.data = data;
@@ -31,6 +33,13 @@ public class Contour implements Comparable {
             if(p.y > size[3]) { size[3] = p.y; }
         }
         area = (size[1] - size[0]) * (size[3] - size[2]);
+    }
+
+    private void analyseContour()
+    {
+        // Check if and how much pixel do overlap
+
+        // Check whether Contour is a straight line or curved
     }
 
     public void drawMultiColored(Bitmap material)
