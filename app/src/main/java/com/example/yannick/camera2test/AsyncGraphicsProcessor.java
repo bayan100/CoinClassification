@@ -63,7 +63,7 @@ public class AsyncGraphicsProcessor extends AsyncTask<Integer, Integer, Integer>
     @Override
     protected void onProgressUpdate(Integer... values) {
         // debug
-        Log.d("GraphicsProcessor","(" + this.getClass().getName() + ") Progress: " + (Math.round((values[0] / 100f) * task.size())) + "/" + task.size());
+        Log.d("GraphicsProcessor","(" + this.getClass().getName() + ") Progress: " + (Math.round((values[0] / 100f) * task.size() + 1)) + "/" + task.size());
     }
 
     @Override

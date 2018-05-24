@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.util.Log;
 
 import org.opencv.android.Utils;
+import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfInt;
@@ -20,8 +21,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Dictionary;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import static org.opencv.core.CvType.CV_32FC1;
 import static org.opencv.core.CvType.CV_8UC3;
 
 public class GraphicsProcessor
@@ -46,8 +49,11 @@ public class GraphicsProcessor
         EdgeDetection,
         FindContours,
         FindEllipse,
+        SplitContours,
         DrawEllipse,
         DrawContours,
+
+        FindCorners,
 
         ResizeImage,
         ConvertToMat,
@@ -126,6 +132,8 @@ public class GraphicsProcessor
 
             case FindContours: status = findContures(); break;
 
+            case SplitContours: status = splitContours(); break;
+
             case DrawContours: status = drawContours(); break;
 
             case FindEllipse: status = findEllipse(); break;
@@ -133,6 +141,8 @@ public class GraphicsProcessor
             case DrawEllipse: status = drawEllipse(); break;
 
             case ResizeImage: status = resizeImage(); break;
+
+            case FindCorners: status = findCorners(); break;
 
             case ConvertToBitmap: status = convertToBitmap(); break;
 
@@ -244,6 +254,28 @@ public class GraphicsProcessor
         return Status.FAILED;
     }
 
+    private Status splitContours()
+    {
+        ContourMap map = new ContourMap();
+
+        map.insert(3,1);
+        map.insert(1,1);
+        map.insert(2,1);
+        map.insert(3,3);
+        map.insert(3,0);
+        map.insert(3,2);
+        map.insert(1,2);
+
+        map.log();
+
+        List<ContourNode> splitp = map.getSplitpoints();
+        for (int i = 0; i < splitp.size(); i++) {
+            Log.d("SPLIT", splitp.get(i).x + ", " + splitp.get(i).y);
+        }
+
+        return Status.PASSED;
+    }
+
     private Status drawContours()
     {
         if(data.type == GData.Type.MAT && additionalData != null)
@@ -254,30 +286,22 @@ public class GraphicsProcessor
             Mat contoursMat = Mat.zeros(target.rows(), target.cols(), CV_8UC3);
             Bitmap contoursBM = getBitmap(contoursMat);
 
-            for (int i = 0; i < contours.size(); i++) {
+            for (int i = 0; i < 1 && i < contours.size(); i++) {
                 ArrayList<MatOfPoint> mp = new ArrayList<MatOfPoint>();
+                mp.add(contours.get(i).data);
 
-                /*MatOfInt hull = new MatOfInt();
-                Imgproc.convexHull(contours.get(i).data, hull);
-                int[] p = hull.toArray();
-                Point[] q = contours.get(i).data.toArray();
-                Point[] points = new Point[p.length];
+                ContourMap map = ContourMap.fromContour(contours.get(i).data);
+                List<ContourNode> splitp = map.getSplitpoints();
 
-                StringBuilder sb = new StringBuilder();
-                for (int j = 0; j < p.length; j++) {
-                    sb.append(p[j] + ", ");
-                    points[j] = q[p[j]];
-                }
-                Log.d("DRAWCONTOUR", sb.toString());
-
-                //mp.add(contours.get(i).data);
-                MatOfPoint matOfPoint = new MatOfPoint();
-                matOfPoint.fromArray(points);*/
-
-                mp.add(contours.get(i).convexContour);
-
-                Imgproc.polylines(contoursMat, mp,false, new Scalar((contours.size() - i) * (255 / contours.size()), i * (255 / contours.size()), 0));
+                //Imgproc.polylines(contoursMat, mp,false, new Scalar((contours.size() - i) * (255 / contours.size()), i * (255 / contours.size()), 0));
                 //contours.get(i).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
+                contours.get(i).drawMultiColored(contoursBM);
+
+                contoursMat = getMat(contoursBM);
+
+                for (int j = 0; j < splitp.size(); j++) {
+                    Imgproc.circle(contoursMat, new Point(splitp.get(j).x, splitp.get(j).y), 1, new Scalar(255, 0, 0));
+                }
                 //Imgproc.drawContours(contoursMat, mp, 0, new Scalar((contours.size() - i) * (255 / contours.size()), i * (255 / contours.size()), 0));
             }
 
@@ -328,6 +352,31 @@ public class GraphicsProcessor
             return Status.PASSED;
         }
         return Status.FAILED;
+    }
+
+    private Status findCorners()
+    {
+        Mat source = data.getMat();
+        Mat dest = Mat.zeros(source.rows(), source.cols(), CvType.CV_32FC1);
+        Imgproc.cornerHarris(source, dest, 2, 3, 0.04);
+
+        Mat tmp = new Mat(), norm = new Mat();
+        Core.normalize(dest, tmp, 0, 255, Core.NORM_MINMAX);
+        Core.convertScaleAbs(tmp, norm);
+
+        for (int i = 0; i < tmp.cols(); i++) {
+            for (int j = 0; j < tmp.rows(); j++) {
+                double[] value = tmp.get(j, i);
+                if(value[0] > 180) {
+                    Log.d("CORNERS", i + ", " + j);
+                    Imgproc.circle(norm, new Point(i, j), 5, new Scalar(255, 0, 0));
+                }
+            }
+        }
+
+        data.setMat(norm);
+
+        return Status.PASSED;
     }
 
     private Status convertToBooleanmap()

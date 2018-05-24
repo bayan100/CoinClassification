@@ -21,6 +21,7 @@ public class AGPFindEllipses extends AsyncGraphicsProcessor {
         processors.add(new GraphicsProcessor((new GData(bitmap)).asMat(), GraphicsProcessor.Task.ResizeImage));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.DrawEllipse));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.ConvertToBitmap));
+        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.SplitContours));
 
         task = processors;
     }
