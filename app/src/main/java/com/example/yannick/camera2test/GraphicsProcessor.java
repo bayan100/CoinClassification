@@ -295,18 +295,20 @@ public class GraphicsProcessor
 
                 //Imgproc.polylines(contoursMat, mp,false, new Scalar((contours.size() - i) * (255 / contours.size()), i * (255 / contours.size()), 0));
                 //contours.get(i).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
-                contours.get(i).drawMultiColored(contoursBM);
+                //contours.get(i).drawMultiColored(contoursBM);
 
-                contoursMat = getMat(contoursBM);
+                map.draw(contoursBM);
 
-                for (int j = 0; j < splitp.size(); j++) {
+                //contoursMat = getMat(contoursBM);
+
+                /*for (int j = 0; j < splitp.size(); j++) {
                     Imgproc.circle(contoursMat, new Point(splitp.get(j).x, splitp.get(j).y), 1, new Scalar(255, 0, 0));
-                }
+                }*/
                 //Imgproc.drawContours(contoursMat, mp, 0, new Scalar((contours.size() - i) * (255 / contours.size()), i * (255 / contours.size()), 0));
             }
 
-            data.setMat(contoursMat);
-            //data.setBitmap(contoursBM);
+            //data.setMat(contoursMat);
+            data.setBitmap(contoursBM);
             return Status.PASSED;
         }
         return Status.FAILED;
