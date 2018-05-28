@@ -260,7 +260,7 @@ public class GraphicsProcessor
 
         map.insert(3,1);
         map.insert(1,1);
-        map.insert(2,1);
+        map.insert(2,2);
         map.insert(3,3);
         map.insert(3,0);
         map.insert(3,2);
@@ -268,7 +268,8 @@ public class GraphicsProcessor
 
         map.log();
 
-        List<ContourNode> splitp = map.getSplitpoints();
+        Object[] res = (Object[])map.getSplitpoints();
+        List<ContourNode> splitp = (List<ContourNode>)res[0];
         for (int i = 0; i < splitp.size(); i++) {
             Log.d("SPLIT", splitp.get(i).x + ", " + splitp.get(i).y);
         }
@@ -291,13 +292,35 @@ public class GraphicsProcessor
                 mp.add(contours.get(i).data);
 
                 ContourMap map = ContourMap.fromContour(contours.get(i).data);
-                List<ContourNode> splitp = map.getSplitpoints();
+                Object[] res = (Object[])map.getSplitpoints();
+                List<ContourNode> splitp = (List<ContourNode>)res[0];
 
                 //Imgproc.polylines(contoursMat, mp,false, new Scalar((contours.size() - i) * (255 / contours.size()), i * (255 / contours.size()), 0));
                 //contours.get(i).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
                 //contours.get(i).drawMultiColored(contoursBM);
 
                 map.draw(contoursBM);
+
+                // DEBUG //
+                List<List<int[]>> segments = (List<List<int[]>>)res[1];
+
+                int matWidth = contoursBM.getWidth();
+                int matHeight = contoursBM.getHeight();
+
+                int[] colors = new int[matWidth * matHeight];
+                contoursBM.getPixels(colors, 0, matWidth, 0, 0, matWidth, matHeight);
+
+                int color = 0xffff0000;
+
+                int offset = 26;
+                for (int j = 0; j < segments.size(); j++) {
+                    List<int[]> nodes = segments.get(j);
+                    for (int k = 0; k < nodes.size(); k++) {
+                        colors[matWidth * (j + offset) + 2 * k + 90] = 0xff00ff00;
+                    }
+                }
+
+                contoursBM.setPixels(colors, 0, matWidth, 0,0, matWidth, matHeight);
 
                 //contoursMat = getMat(contoursBM);
 

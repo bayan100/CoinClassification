@@ -58,54 +58,51 @@ class ContourMap
             List<ContourNode> item = new ArrayList<>();
             item.add(new ContourNode(x, y));
             data.add(item);
-            return;
         }
+        else {
+            // binary search in y
+            int a = 0, b = data.size();
+            int i = (b - a) / 2, oldi = -1;
+            while (true) {
+                ContourNode c = data.get(i).get(0);
 
-        // binary search in y
-        int a = 0, b = data.size() - 1;
-        int i = (b - a) / 2;
-        while (true){
-            ContourNode c = data.get(i).get(0);
+                if (c.y == y) {
+                    List<ContourNode> list = data.get(i);
 
-            if(c.y == y)
-            {
-                List<ContourNode> list = data.get(i);
+                    // check if node does not already exist
+                    int[] xIndex = getIndex(x, list);
+                    if (xIndex[0] == 0) {
+                        // add the node
+                        ContourNode node = new ContourNode(x, y);
+                        list.add(xIndex[1], node);
 
-                // check if node does not already exist
-                int[] xIndex = getIndex(x, list);
-                if(xIndex[0] == 0)
-                {
-                    // add the node
+                        // accumulate its neighbors
+                        addNeighbours(node, i);
+                        return;
+                    }
+                    return;
+                } else if (c.y < y)
+                    a = i;
+                else
+                    b = i;
+
+                oldi = i;
+                i = (b - a) / 2 + a;
+
+                // When reached a new y-spot
+                if (i == oldi) {
+                    // new List with single Element
+                    List<ContourNode> item = new ArrayList<>();
                     ContourNode node = new ContourNode(x, y);
-                    list.add(xIndex[1], node);
+                    item.add(node);
+                    if(i == 0 && data.get(0).get(0).y > y)
+                        i = -1;
+                    data.add(i + 1, item);
 
                     // accumulate its neighbors
-                    addNeighbours(node, i);
+                    addNeighbours(node, i + 1);
                     return;
                 }
-                return;
-            }
-            else if(c.y < y)
-                a = i;
-            else
-                b = i;
-
-            i = (b - a) / 2 + a;
-
-            // When reached a new y-spot
-            if(a == i || b == i)
-            {
-                // new List with single Element
-                List<ContourNode> item = new ArrayList<>();
-                ContourNode node = new ContourNode(x, y);
-                item.add(node);
-                if(i == 0 && y < c.y)
-                    i = -1;
-                data.add(i + 1, item);
-
-                // accumulate its neighbors
-                addNeighbours(node, i + 1);
-                return;
             }
         }
     }
@@ -135,36 +132,33 @@ class ContourMap
         }
     }
 
-    private int[] getIndex(int x, List<ContourNode> list)
-    {
+    private int[] getIndex(int x, List<ContourNode> list) {
         // binary search in y
-        if(list.size() > 1) {
-            int a = 0, b = list.size();
-            int i = (b - a) / 2, oldi = -1;
-            while (true) {
-                ContourNode c = list.get(i);
+        int a = 0, b = list.size();
+        int i = (b - a) / 2, oldi = -1;
+        while (true) {
+            ContourNode c = list.get(i);
 
-                if (c.x == x)
-                    return new int[]{1, i};
-                else if (c.x < x)
-                    a = i;
-                else
-                    b = i;
+            if (c.x == x)
+                return new int[]{1, i};
+            else if (c.x < x)
+                a = i;
+            else
+                b = i;
 
-                oldi = i;
-                i = (b - a) / 2 + a;
+            oldi = i;
+            i = (b - a) / 2 + a;
 
-                // When reached a new x-spot
-                if (i == oldi)
-                    // no element with this particular x-Koordinate
-                    return new int[]{0, i + 1};
+            // When reached a new x-spot
+            if (i == oldi) {
+                // check if inserting in front of the first element
+                if (i == 0 && list.get(0).x > x)
+                    return new int[]{0, 0};
+
+                // no element with this particular x-Koordinate
+                return new int[]{0, i + 1};
             }
         }
-        if(list.get(0).x > x)
-            return new int[]{0, 0};
-        else if(list.get(0).x < x)
-            return new int[]{0, 1};
-        return new int[]{1,0};
     }
 
     List<ContourNode> getSplitpoints2()
@@ -203,13 +197,11 @@ class ContourMap
         return result;
     }
 
-    List<ContourNode> getSplitpoints()
+    /*List<ContourNode>*/ Object getSplitpoints()
     {
         List<ContourNode> result = new ArrayList<>();
 
         Log.d("SEGMENTS", "datasize: " + data.size());
-
-        StringBuilder sb2 = new StringBuilder();
 
         // scan the field top to bottom (scanline in y)
         List<List<int[]>> segments = new ArrayList<>();
@@ -226,8 +218,6 @@ class ContourMap
                     current[1] = list.get(j).x;
                     segments.get(i).add(current);
 
-                    sb2.append("[" + j + "] " + current[0] + ", " + current[1]);
-
                     // start new segment
                     if(j + 1 < list.size())
                         current = new int[] {list.get(j + 1).x, 0};
@@ -235,15 +225,9 @@ class ContourMap
             }
         }
 
-        Log.d("SEGMENTS", sb2.toString());
-
         // now iterate the segments and count them
         int current = segments.get(0).size();
-        StringBuilder sb = new StringBuilder();
-        sb.append("c: " + segments.size() + ", ");
         for (int i = 1; i < segments.size(); i++) {
-            sb.append(" " + current);
-
             // when we see current changing
             if(current != segments.get(i).size()){
                 List<int[]> oSeg = segments.get(i - 1);
@@ -251,15 +235,11 @@ class ContourMap
 
                 // new split
                 if(current < nSeg.size()){
-                    sb.append(": ");
 
                     // seek for the split. The new segments both must at least touch the old segment
                     int index = 0;
                     int foundtype = 0;
                     for (int j = 0; j < nSeg.size() && index < oSeg.size(); j++) {
-
-                        sb.append(" (" + j + "," + index + ")[" + nSeg.size() + "," + oSeg.size() + "] ");
-                        sb.append("<" + nSeg.get(j)[0] + ", " + nSeg.get(j)[1] + "> <" + oSeg.get(index)[0] + ", " + oSeg.get(index)[1] + ">");
 
                         // 1. case: segment cutoff (indicates end of a line, no split)
                         //          try to resume with another old segment
@@ -277,14 +257,10 @@ class ContourMap
                         }
 
                         // 3. case: new segment partially or completely inside old
-                        if(nSeg.get(j)[1] + 1 >= oSeg.get(index)[0] && nSeg.get(j)[1] < oSeg.get(index)[1]) {
+                        if(nSeg.get(j)[1] + 1 >= oSeg.get(index)[0] && nSeg.get(j)[1] <= oSeg.get(index)[1]) {
                             // check if we found the split partner previously
-                            if(foundtype == 3){
-                                for (int k = oSeg.get(index)[0]; k < oSeg.get(index)[1] + 1; k++) {
-                                    data.get(i).get(k).splitNode = true;
-                                    result.add(data.get(i).get(k));
-                                }
-                            }
+                            if(foundtype == 3)
+                                addSplitpixel(oSeg.get(index), i - 1, result);
 
                             foundtype = 3;
                             continue;
@@ -293,12 +269,47 @@ class ContourMap
                         // 4. case: new segment partially outside the other side
                         if(nSeg.get(j)[0] > oSeg.get(index)[0] && nSeg.get(j)[1] > oSeg.get(index)[1]){
                             // check if we found the split partner previously
-                            if(foundtype == 3){
-                                for (int k = oSeg.get(index)[0]; k < oSeg.get(index)[1] + 1; k++) {
-                                    data.get(i).get(k).splitNode = true;
-                                    result.add(data.get(i).get(k));
-                                }
-                            }
+                            if(foundtype == 3)
+                                addSplitpixel(oSeg.get(index), i - 1, result);
+
+                            foundtype = 4;
+                        }
+                    }
+                }
+                // new merge
+                else if(current > nSeg.size()){
+                    int index = 0;
+                    int foundtype = 0;
+                    for (int j = 0; j < oSeg.size() && index < nSeg.size(); j++) {
+
+                        // 1. case: segment start (indicates start of a line, no split)
+                        //          try to resume with another old segment
+                        if(oSeg.get(j)[0] > nSeg.get(index)[1] + 1){
+                            index++;
+                            j--;
+                            foundtype = 1;
+                            continue;
+                        }
+
+                        // 2. case: old segment outside of new (too small)
+                        if(oSeg.get(j)[1] + 1 < nSeg.get(index)[0]){
+                            foundtype = 2;
+                            continue;
+                        }
+
+                        // 3. case: old segment partially or completely inside of new segment
+                        if(oSeg.get(j)[1] + 1 >= nSeg.get(index)[0] && oSeg.get(j)[1] <= nSeg.get(index)[1]){
+                            if(foundtype == 3)
+                                addSplitpixel(nSeg.get(index), i, result);
+
+                            foundtype = 3;
+                            continue;
+                        }
+
+                        // 4. case: old segment partially outside of new segment
+                        if(oSeg.get(j)[0] <= nSeg.get(index)[1] + 1){
+                            if(foundtype == 3)
+                                addSplitpixel(nSeg.get(index), i, result);
 
                             foundtype = 4;
                         }
@@ -308,11 +319,35 @@ class ContourMap
 
             current = segments.get(i).size();
         }
-        sb.append(" -> " + result.size());
 
-        Log.d("STRIPES", sb.toString());
+        return new Object[]{result, segments};
+    }
 
-        return result;
+    private void addSplitpixel(int[] seg, int i, List<ContourNode> result){
+        // make sure the chosen pixel are connected to the right
+        boolean connected = false;
+        for (int k = seg[0]; k < seg[1] + 1; k++) {
+            int ind = getIndex(k, data.get(i))[1];
+            ContourNode node = data.get(i).get(ind);
+            if(node.connectedIn(-1, 1) ||
+                    node.connectedIn(0, 1) ||
+                    node.connectedIn(1, 1)){
+                connected = true;
+                break;
+            }
+        }
+        if(connected)
+            for (int k = seg[0]; k < seg[1] + 1; k++) {
+                // mark the nodes with the right x-value as splitnodes
+                int ind = getIndex(k, data.get(i))[1];
+                ContourNode node = data.get(i).get(ind);
+
+                // only mark the true connector
+                if(node.nodes.size() > 2) {
+                    node.splitNode = true;
+                    result.add(data.get(i).get(ind));
+                }
+            }
     }
 
     void log()
