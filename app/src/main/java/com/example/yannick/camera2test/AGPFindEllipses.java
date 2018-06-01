@@ -17,11 +17,11 @@ public class AGPFindEllipses extends AsyncGraphicsProcessor {
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.MedianBlur));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.EdgeDetection));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.FindContours));
+        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.SplitContours));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.FindEllipse));
         processors.add(new GraphicsProcessor((new GData(bitmap)).asMat(), GraphicsProcessor.Task.ResizeImage));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.DrawEllipse));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.ConvertToBitmap));
-        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.SplitContours));
 
         task = processors;
     }

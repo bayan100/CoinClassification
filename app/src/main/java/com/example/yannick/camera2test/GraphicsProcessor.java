@@ -256,25 +256,101 @@ public class GraphicsProcessor
 
     private Status splitContours()
     {
-        ContourMap map = new ContourMap();
+        if(additionalData != null) {
+            ArrayList<Contour> contours = (ArrayList<Contour>) additionalData;
+
+            // try to split each contour
+            for (int i = 0; i < 1 && i < contours.size(); i++) {
+                //ContourMap map = ContourMap.fromContour(contours.get(i).data);
+
+                ContourMap map = new ContourMap();
+                // get the split-points
+
+                map.insert(3,1);
+                map.insert(1,1);
+                map.insert(2,1);
+                map.insert(3,2);
+                map.insert(1,2);
+                map.insert(3,2);
+                map.insert(3,3);
+
+                // get the split-points
+                List<ContourNode> splitp = map.getSplitpoints();
+
+                // if there is the need to split, remove old contour. It will be replaced by the split
+                if(splitp.size() > 0)
+                    contours.remove(i);
+
+                // starting from each splitpoint, gather the contourpoints
+                for (int j = 0; j < splitp.size(); j++) {
+                    ContourNode split = splitp.get(j);
+
+                    //
+
+                    // iterate the neighbors
+                    for (int k = -1; k < 2; k++) {
+                        for (int l = -1; l < 2; l++) {
+                            ContourNode item = split.connectedNode(k, l);
+                            if (item != null) {
+
+                                // cut the connections to other neighbors of the splitpoint
+                                // including the splitpoint
+                                for (int m = 0; m < 9; m++) {
+                                    if (item.nodes[m] != null) {
+                                        for (int n = 0; n < 9; n++) {
+                                            if (item.nodes[m] == split.nodes[n] || item.nodes[m] == split) {
+                                                item.nodes[m] = null;
+
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // start to gather the contour from this neighbor
+                                List<Point> resultContour = new ArrayList<>();
+                                map.convertToPoints(item, k, resultContour);
+
+                                // convert to Contour
+                                MatOfPoint matOfPoint = new MatOfPoint();
+                                matOfPoint.fromList(resultContour);
+                                Contour c = new Contour(matOfPoint);
+
+                                // add to list
+                                contours.add(c);
+                                i++;
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            return Status.PASSED;
+        }
+        //ArrayList<Contour> contours = (ArrayList<Contour>)additionalData;
+        //ContourMap map = ContourMap.fromContour(contours.get(0).data);
+        /*ContourMap map = new ContourMap();
+        // get the split-points
 
         map.insert(3,1);
-        map.insert(1,1);
+        map.insert(4,1);
+        map.insert(7,1);
         map.insert(2,2);
+        map.insert(5,2);
+        map.insert(7,2);
+        map.insert(1,3);
         map.insert(3,3);
-        map.insert(3,0);
-        map.insert(3,2);
-        map.insert(1,2);
+        map.insert(6,3);
+        map.insert(1,4);
+        map.insert(4,4);
+        map.insert(5,4);
 
         map.log();
 
-        Object[] res = (Object[])map.getSplitpoints();
-        List<ContourNode> splitp = (List<ContourNode>)res[0];
-        for (int i = 0; i < splitp.size(); i++) {
-            Log.d("SPLIT", splitp.get(i).x + ", " + splitp.get(i).y);
-        }
+        List<ContourNode> splitp = map.getSplitpoints();
+        Log.d("SPLIT", splitp.size() + "");*/
 
-        return Status.PASSED;
+        return Status.FAILED;
     }
 
     private Status drawContours()
@@ -287,13 +363,16 @@ public class GraphicsProcessor
             Mat contoursMat = Mat.zeros(target.rows(), target.cols(), CV_8UC3);
             Bitmap contoursBM = getBitmap(contoursMat);
 
-            for (int i = 0; i < 1 && i < contours.size(); i++) {
+            for (int i = 0; /*i < 1 &&*/ i < contours.size(); i++) {
                 ArrayList<MatOfPoint> mp = new ArrayList<MatOfPoint>();
                 mp.add(contours.get(i).data);
 
+                long starttime = System.nanoTime();
                 ContourMap map = ContourMap.fromContour(contours.get(i).data);
-                Object[] res = (Object[])map.getSplitpoints();
-                List<ContourNode> splitp = (List<ContourNode>)res[0];
+                //Log.d("timer",  ((System.nanoTime() - starttime) / 1000000) + " ms");
+                starttime = System.nanoTime();
+                List<ContourNode> splitp = map.getSplitpoints();
+                //Log.d("timer",  ((System.nanoTime() - starttime) / 1000000) + " ms");
 
                 //Imgproc.polylines(contoursMat, mp,false, new Scalar((contours.size() - i) * (255 / contours.size()), i * (255 / contours.size()), 0));
                 //contours.get(i).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
@@ -302,7 +381,7 @@ public class GraphicsProcessor
                 map.draw(contoursBM);
 
                 // DEBUG //
-                List<List<int[]>> segments = (List<List<int[]>>)res[1];
+                /*List<List<int[]>> segments = (List<List<int[]>>)res[1];
 
                 int matWidth = contoursBM.getWidth();
                 int matHeight = contoursBM.getHeight();
@@ -320,7 +399,7 @@ public class GraphicsProcessor
                     }
                 }
 
-                contoursBM.setPixels(colors, 0, matWidth, 0,0, matWidth, matHeight);
+                contoursBM.setPixels(colors, 0, matWidth, 0,0, matWidth, matHeight);*/
 
                 //contoursMat = getMat(contoursBM);
 

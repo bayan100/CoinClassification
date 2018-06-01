@@ -17,8 +17,8 @@ public class AGPContours extends AsyncGraphicsProcessor {
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.MedianBlur));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.EdgeDetection));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.FindContours));
+        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.SplitContours));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.DrawContours));
-        //processors.add(new GraphicsProcessor(GraphicsProcessor.Task.FindCorners));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.ConvertToBitmap));
 
         task = processors;

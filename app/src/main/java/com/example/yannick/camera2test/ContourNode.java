@@ -14,35 +14,47 @@ import java.util.List;
 class ContourNode implements Comparable
 {
     int x, y;
-    List<ContourNode> nodes;
+    ContourNode[] nodes; // 0 = top left, 1 = top middle, 2 = top right, 3 = middle left, 5 = middle right, 6 = bottom left, 7 = bottom middle, 8 = bottom right
+    int size = 0;
     boolean splitNode;
 
-    public ContourNode(int x, int y){
+    ContourNode(int x, int y){
         this.x = x;
         this.y = y;
 
-        nodes = new ArrayList<>();
-    }
-
-    boolean connected(ContourNode node) {
-        return nodes.contains(node);
+        //nodes = new ArrayList<>();
+        nodes = new ContourNode[9];
     }
 
     boolean connectedIn(int xi, int yi){
-        for (int i = 0; i < nodes.size(); i++) {
-            if(nodes.get(i).x == x + xi && nodes.get(i).y == y + yi)
-                return true;
-        }
-        return false;
+        int index = (yi + 1) * 3 + xi + 1;
+        return nodes[index] != null;
     }
 
+    ContourNode connectedNode(int xi, int yi){
+        int index = (yi + 1) * 3 + xi + 1;
+        return nodes[index];
+    }
+
+    void addNeighbor(ContourNode item){
+        int index = (item.y - y + 1) * 3 + item.x - x + 1;
+        nodes[index] = item;
+        size++;
+    }
 
     @Override
     public int compareTo(@NonNull Object o) {
-        if(((ContourNode)o).y == y && ((ContourNode)o).x == x)
+        if(o.getClass() == ContourNode.class && ((ContourNode)o).y == y && ((ContourNode)o).x == x)
+            return 0;
+        else if(o.getClass() == Point.class && ((Point)o).y == y && ((Point)o).x == x)
             return 0;
         else
             return -1;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj != null && compareTo(obj) == 0;
     }
 }
 
@@ -123,8 +135,8 @@ class ContourMap
                         if (ci[0] == 1) {
                             // linking on both sides
                             ContourNode c = list.get(ci[1]);
-                            item.nodes.add(c);
-                            c.nodes.add(item);
+                            item.addNeighbor(c);
+                            c.addNeighbor(item);
                         }
                     }
                 }
@@ -161,43 +173,7 @@ class ContourMap
         }
     }
 
-    List<ContourNode> getSplitpoints2()
-    {
-        List<ContourNode> result = new ArrayList<>();
-
-        // iterate every contournode
-        for (int i = 0; i < data.size(); i++) {
-            List<ContourNode> list = data.get(i);
-            for (int j = 0; j < list.size(); j++) {
-                // if it has at least 3 neighbors
-                List<ContourNode> nodes = list.get(j).nodes;
-                if(nodes.size() > 2){
-                    Log.d("SPLIT", "Reached");
-                    // check if at least 3 of those nodes are remote
-                    int remoteCount = 0;
-                    for (int k = 0; k < nodes.size(); k++)
-                        for (int l = k; l < nodes.size(); l++) {
-                            if(!nodes.get(k).connected(nodes.get(l)))
-                                remoteCount++;
-                        }
-
-                    // remotepairs?
-                    if(remoteCount > 2) {
-
-                        // now check if the remot
-
-                        // add to output
-                        list.get(j).splitNode = true;
-                        result.add(list.get(j));
-                    }
-                }
-            }
-        }
-
-        return result;
-    }
-
-    /*List<ContourNode>*/ Object getSplitpoints()
+    List<ContourNode> getSplitpoints()
     {
         List<ContourNode> result = new ArrayList<>();
 
@@ -226,101 +202,89 @@ class ContourMap
         }
 
         // now iterate the segments and count them
-        int current = segments.get(0).size();
         for (int i = 1; i < segments.size(); i++) {
-            // when we see current changing
-            if(current != segments.get(i).size()){
-                List<int[]> oSeg = segments.get(i - 1);
-                List<int[]> nSeg = segments.get(i);
+            List<int[]> oSeg = segments.get(i - 1);
+            List<int[]> nSeg = segments.get(i);
 
-                // new split
-                if(current < nSeg.size()){
+            // seek for the split. The new segments both must at least touch the old segment
+            int index = 0;
+            int foundtype = 0;
+            for (int j = 0; j < nSeg.size() && index < oSeg.size(); j++) {
 
-                    // seek for the split. The new segments both must at least touch the old segment
-                    int index = 0;
-                    int foundtype = 0;
-                    for (int j = 0; j < nSeg.size() && index < oSeg.size(); j++) {
-
-                        // 1. case: segment cutoff (indicates end of a line, no split)
-                        //          try to resume with another old segment
-                        if(nSeg.get(j)[0] > oSeg.get(index)[1] + 1){
-                            index++;
-                            j--;
-                            foundtype = 1;
-                            continue;
-                        }
-
-                        // 2. case: new segment outside of the old (too small)
-                        if(nSeg.get(j)[1] + 1 < oSeg.get(index)[0]){
-                            foundtype = 2;
-                            continue;
-                        }
-
-                        // 3. case: new segment partially or completely inside old
-                        if(nSeg.get(j)[1] + 1 >= oSeg.get(index)[0] && nSeg.get(j)[1] <= oSeg.get(index)[1]) {
-                            // check if we found the split partner previously
-                            if(foundtype == 3)
-                                addSplitpixel(oSeg.get(index), i - 1, result);
-
-                            foundtype = 3;
-                            continue;
-                        }
-
-                        // 4. case: new segment partially outside the other side
-                        if(nSeg.get(j)[0] > oSeg.get(index)[0] && nSeg.get(j)[1] > oSeg.get(index)[1]){
-                            // check if we found the split partner previously
-                            if(foundtype == 3)
-                                addSplitpixel(oSeg.get(index), i - 1, result);
-
-                            foundtype = 4;
-                        }
-                    }
+                // 1. case: segment cutoff (indicates end of a line, no split)
+                //          try to resume with another old segment
+                if (nSeg.get(j)[0] > oSeg.get(index)[1] + 1) {
+                    index++;
+                    j--;
+                    foundtype = 1;
+                    continue;
                 }
-                // new merge
-                else if(current > nSeg.size()){
-                    int index = 0;
-                    int foundtype = 0;
-                    for (int j = 0; j < oSeg.size() && index < nSeg.size(); j++) {
 
-                        // 1. case: segment start (indicates start of a line, no split)
-                        //          try to resume with another old segment
-                        if(oSeg.get(j)[0] > nSeg.get(index)[1] + 1){
-                            index++;
-                            j--;
-                            foundtype = 1;
-                            continue;
-                        }
+                // 2. case: new segment outside of the old (too small)
+                if (nSeg.get(j)[1] + 1 < oSeg.get(index)[0]) {
+                    foundtype = 2;
+                    continue;
+                }
 
-                        // 2. case: old segment outside of new (too small)
-                        if(oSeg.get(j)[1] + 1 < nSeg.get(index)[0]){
-                            foundtype = 2;
-                            continue;
-                        }
+                // 3. case: new segment partially or completely inside old
+                if (nSeg.get(j)[1] + 1 >= oSeg.get(index)[0] && nSeg.get(j)[1] <= oSeg.get(index)[1]) {
+                    // check if we found the split partner previously
+                    if (foundtype == 3)
+                        addSplitpixel(oSeg.get(index), i - 1, result);
 
-                        // 3. case: old segment partially or completely inside of new segment
-                        if(oSeg.get(j)[1] + 1 >= nSeg.get(index)[0] && oSeg.get(j)[1] <= nSeg.get(index)[1]){
-                            if(foundtype == 3)
-                                addSplitpixel(nSeg.get(index), i, result);
+                    foundtype = 3;
+                    continue;
+                }
 
-                            foundtype = 3;
-                            continue;
-                        }
+                // 4. case: new segment partially outside the other side
+                if (nSeg.get(j)[0] > oSeg.get(index)[0] && nSeg.get(j)[1] > oSeg.get(index)[1]) {
+                    // check if we found the split partner previously
+                    if (foundtype == 3)
+                        addSplitpixel(oSeg.get(index), i - 1, result);
 
-                        // 4. case: old segment partially outside of new segment
-                        if(oSeg.get(j)[0] <= nSeg.get(index)[1] + 1){
-                            if(foundtype == 3)
-                                addSplitpixel(nSeg.get(index), i, result);
-
-                            foundtype = 4;
-                        }
-                    }
+                    foundtype = 4;
                 }
             }
 
-            current = segments.get(i).size();
+            index = 0;
+            foundtype = 0;
+            for (int j = 0; j < oSeg.size() && index < nSeg.size(); j++) {
+
+                // 1. case: segment start (indicates start of a line, no split)
+                //          try to resume with another old segment
+                if (oSeg.get(j)[0] > nSeg.get(index)[1] + 1) {
+                    index++;
+                    j--;
+                    foundtype = 1;
+                    continue;
+                }
+
+                // 2. case: old segment outside of new (too small)
+                if (oSeg.get(j)[1] + 1 < nSeg.get(index)[0]) {
+                    foundtype = 2;
+                    continue;
+                }
+
+                // 3. case: old segment partially or completely inside of new segment
+                if (oSeg.get(j)[1] + 1 >= nSeg.get(index)[0] && oSeg.get(j)[1] <= nSeg.get(index)[1]) {
+                    if (foundtype == 3)
+                        addSplitpixel(nSeg.get(index), i, result);
+
+                    foundtype = 3;
+                    continue;
+                }
+
+                // 4. case: old segment partially outside of new segment
+                if (oSeg.get(j)[0] <= nSeg.get(index)[1] + 1) {
+                    if (foundtype == 3)
+                        addSplitpixel(nSeg.get(index), i, result);
+
+                    foundtype = 4;
+                }
+            }
         }
 
-        return new Object[]{result, segments};
+        return result;
     }
 
     private void addSplitpixel(int[] seg, int i, List<ContourNode> result){
@@ -343,11 +307,59 @@ class ContourMap
                 ContourNode node = data.get(i).get(ind);
 
                 // only mark the true connector
-                if(node.nodes.size() > 2) {
+                if(node.size > 2) {
                     node.splitNode = true;
                     result.add(data.get(i).get(ind));
                 }
             }
+    }
+
+    void convertToPoints(ContourNode node, int dirBias, List<Point> result){
+
+        // iterate the connected nodes, starting up, down, then the 3 in bias direction, last the remaining 3
+        for (int i = 1; i < 3; i++) {
+            for (int j = 1; j < 3; j++) {
+                int index = (i % 2) * 3 + (j % 2 - 1) * dirBias + 1;
+                if(node.nodes[index] != null){
+                    // invalidate backwards direction
+                    node.nodes[index].nodes[(2 + index * 5) % 12] = null;
+                    // add node as point to the new contour and continue in chosen direction
+                    result.add(new Point(node.x, node.y));
+                    convertToPoints(node.nodes[index], dirBias, result);
+                    // invalidate backwards for both partners
+                    node.nodes[index] = null;
+                }
+            }
+        }
+/*
+        // check up and down your own row first
+        if(node.nodes[1] != null){
+            node.nodes[1].nodes[7] = null;
+            result.add(new Point(node.x, node.y));
+            convertToPoints(node.nodes[1], dirBias, result);
+            node.nodes[1] = null;
+        }else if(node.nodes[7] != null){
+            node.nodes[7].nodes[1] = null;
+            result.add(new Point(node.x, node.y));
+            convertToPoints(node.nodes[7], dirBias, result);
+            node.nodes[7] = null;
+        }
+
+        // if bias check the 3 nodes in that direction
+        if(dirBias != 0){
+            for (int i = -1; i < 2; i++) {
+                int index = (i + 1) * 3 + dirBias + 1;
+                if(node.nodes[index] != null){
+                    node.nodes[index].nodes[index - 2 * dirBias] = null;
+                    result.add(new Point(node.x, node.y));
+                    convertToPoints(node.nodes[index], dirBias, result);
+                    node.nodes[index] = null;
+                }
+            }
+        }
+        // if not or no more nodes in that direction check all directions and find bias
+*/
+
     }
 
     void log()
@@ -357,8 +369,13 @@ class ContourMap
             for (int j = 0; j < data.get(i).size(); j++) {
                 ContourNode c = data.get(i).get(j);
                 sb.append("(" + c.x + ", " + c.y + ", ");
-                for (int k = 0; k < c.nodes.size(); k++) {
-                    sb.append("[" + c.nodes.get(k).x + "," + c.nodes.get(k).y + "],");
+                for (int k = -1; k < 2; k++) {
+                    for (int l = -1; l < 2; l++) {
+                        ContourNode n = c.connectedNode(k, l);
+                        if(n != null){
+                            sb.append("[" + n.x + "," + n.y + "],");
+                        }
+                    }
                 }
                 sb.append("), ");
             }
