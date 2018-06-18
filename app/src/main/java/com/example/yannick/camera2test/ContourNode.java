@@ -72,11 +72,11 @@ class ContourMap
 {
     // [y][x]
     List<List<ContourNode>> data = new ArrayList<>();
-     List<List<int[]>> segments = null;
+    private List<List<int[]>> segments = null;
     private List<ContourNode> splitPoints = null;
-    private List<Point> mergerOrSeperators = null;
 
-    void insert(int x, int y)
+
+    private void insert(int x, int y)
     {
         // insert first element
         if(data.size() == 0){
@@ -446,6 +446,13 @@ class ContourMap
                         ContourNode node = list.get(k);
                         list.remove(k);
 
+                        // if the list is empty now, remove it from the overall mix
+                        if(list.size() < 1){
+                            data.remove(i);
+                            segments.remove(i);
+                            break splitLoop;
+                        }
+
                         // adjust the segments
                         List<int[]> seg = segments.get(i);
                         for (int l = 0; l < seg.size(); l++) {
@@ -484,13 +491,10 @@ class ContourMap
         if (splitPoints == null)
             return;
 
-        int count = 0, count2 = 0;
         for (int i = 0; i < data.size(); i++) {
             List<ContourNode> list = data.get(i);
             for (int k = 0; k < list.size(); k++) {
-                count2++;
                 if (list.get(k).splitNode) {
-                    count++;
                     ContourNode split = list.get(k);
                     for (int l = 0; l < 9; l++) {
                         ContourNode item = split.nodes[l];
@@ -510,13 +514,22 @@ class ContourMap
                     }
 
                     list.remove(k);
+                    k--;
+
+                    // if the list is empty now, remove it from the overall mix
+                    if(list.size() < 1){
+                        data.remove(i);
+                        segments.remove(i);
+                        break;
+                    }
 
                     // adjust the segments
                     List<int[]> seg = segments.get(i);
                     for (int l = 0; l < seg.size(); l++) {
                         int[] current = seg.get(l);
+
                         // find the segment that contains the splitpoint
-                        if(current[0] >= split.x && current[1] <= split.x){
+                        if(current[0] <= split.x && current[1] >= split.x){
                             // check the edges, but make sure the node is not single
                             if(current[0] == current[1]){
                                 // single node, remove directly
@@ -534,13 +547,13 @@ class ContourMap
                                 current[1] = split.x - 1;
                                 seg.add(l + 1, newseg);
                             }
+                            break;
                         }
                     }
                 }
             }
         }
     }
-
 
     List<List<Point>> convertToPoints(){
         List<List<Point>> result = new ArrayList<>();
@@ -563,35 +576,49 @@ class ContourMap
             int state = -1;
             List<ContourNode> segmentdata = data.get(k);
             int added = 0;
+            int removed = 0;
+
+            //Log.d("SPLIT", " k = " + k + ", current = " + current.size());
 
             while (i < iSeg.size() || j < jSeg.size()) {
+                //Log.d("SPLIT", "     i = " + i + ", j = " + j);
                 // case 0:
                 if(i >= iSeg.size()){
+                    //Log.d("SPLIT", "     state = 0.1");
+
                     // end of both segments
-                    if(state == 2)
+                    if(state == 2 && j + 1 >= jSeg.size())
                         break;
 
                     // add a new contour
                     current.add(j, new ArrayList<Point>());
 
                     // insert the points
-                    added += addToCurrent(jSeg.get(j), added, segmentdata, current.get(j));
+                    if(state == 2)
+                        added += addToCurrent(jSeg.get(j + 1), added, segmentdata, current.get(j));
+                    else
+                        added += addToCurrent(jSeg.get(j), added, segmentdata, current.get(j));
                     j++;
                 }
                 else if(j >= jSeg.size()){
+                    //Log.d("SPLIT", "     state = 0.2");
+
                     // end of both segments
-                    if(state == 3)
+                    if(state == 3 && i + 1 >= iSeg.size())
                         break;
 
                     // remove the ended segment from current
-                    result.add(current.get(i));
-                    current.remove(i);
+                    result.add(current.get(i - removed));
+                    current.remove(i - removed);
 
+                    removed++;
                     i++;
                 }
 
                 // case 1:
                 else if (iSeg.get(i)[1] + 1 < jSeg.get(j)[0]){
+                    //Log.d("SPLIT", "     state = 1");
+
                     // remove the ended segment from current but only if it really is one
                     if(state != 3) {
                         result.add(current.get(i));
@@ -602,6 +629,8 @@ class ContourMap
                 }
                 // case 2/5:
                 else if(iSeg.get(i)[1] <= jSeg.get(j)[1]){
+                    //Log.d("SPLIT", "     state = 2");
+
                     // test for merge
                     if(state == 2){
                         // invert the lower contour and append to upper
@@ -632,6 +661,8 @@ class ContourMap
                 }
                 // case 3/6:
                 else if(iSeg.get(i)[0] - 1 <= jSeg.get(j)[1]){
+                    //Log.d("SPLIT", "     state = 3");
+
                     // test for merge
                     if(state == 2){
                         // invert the lower contour and append to upper
@@ -662,6 +693,8 @@ class ContourMap
                 }
                 // case 4:
                 else {
+                    //Log.d("SPLIT", "     state = 4");
+
                     // add a new contour only if really a new start
                     if(state != 2) {
                         current.add(j, new ArrayList<Point>());
@@ -678,18 +711,34 @@ class ContourMap
         // after iterating, merge all open ends who started together
         for (int i = 0; i < toMerge0.size(); i++) {
             // find them in the result list
-            result.remove(result.indexOf(toMerge0.get(i)));
-            result.remove(result.indexOf(toMerge1.get(i)));
+            int ind = result.indexOf(toMerge0.get(i));
+            if(ind != -1)
+                result.remove(ind);
+            ind = result.indexOf(toMerge1.get(i));
+            if(ind != -1)
+                result.remove(ind);
 
             Collections.reverse(toMerge0.get(i));
             toMerge1.get(i).addAll(toMerge0.get(i));
             result.add(toMerge1.get(i));
+
+            // remove from current to later not add again
+            ind = current.indexOf(toMerge0.get(i));
+            if(ind != -1)
+                current.remove(ind);
+            ind = current.indexOf(toMerge1.get(i));
+            if(ind != -1)
+                current.remove(ind);
         }
+
+        // add the remaining open ends (without partner) to result
+        result.addAll(current);
 
         return result;
     }
 
     private int addToCurrent(int[] segment, int added, List<ContourNode> segmentdata, List<Point> current){
+        //Log.d("SPLIT", "     added = " + added + " len = " + (segment[1] - segment[0] + 1));
         for (int k = 0; k < segment[1] - segment[0] + 1; k++) {
             ContourNode item = segmentdata.get(k + added);
             current.add(new Point(item.x, item.y));
@@ -704,14 +753,18 @@ class ContourMap
             for (int j = 0; j < data.get(i).size(); j++) {
                 ContourNode c = data.get(i).get(j);
                 sb.append("(" + c.x + ", " + c.y + ", ");
-                for (int k = -1; k < 2; k++) {
+                if(c.splitNode)
+                    sb.append("S");
+                else
+                    sb.append(".");
+                /*for (int k = -1; k < 2; k++) {
                     for (int l = -1; l < 2; l++) {
                         ContourNode n = c.connectedNode(k, l);
                         if(n != null){
                             sb.append("[" + n.x + "," + n.y + "],");
                         }
                     }
-                }
+                }*/
                 sb.append("), ");
             }
             sb.append("\n");
@@ -752,9 +805,11 @@ class ContourMap
     {
         ContourMap map = new ContourMap();
         Point[] points = data.toArray();
+
         for (int i = 0; i < points.length; i++) {
             map.insert((int)points[i].x, (int)points[i].y);
         }
+
         return map;
     }
 }

@@ -8,7 +8,6 @@ import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-import org.opencv.core.MatOfInt;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
@@ -19,12 +18,10 @@ import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.opencv.core.CvType.CV_32FC1;
 import static org.opencv.core.CvType.CV_8UC3;
 
 public class GraphicsProcessor
@@ -50,6 +47,7 @@ public class GraphicsProcessor
         FindContours,
         FindEllipse,
         SplitContours,
+        FilterContours,
         DrawEllipse,
         DrawContours,
 
@@ -92,7 +90,8 @@ public class GraphicsProcessor
 
         // FindEllipse
         parameter.put("FEminSize", 0.08f);
-        parameter.put("FEminArea", 20f);
+        parameter.put("FEminArea", 40f);
+        parameter.put("FEstraightnessThreshold", 0.5f);
 
         // ConvertToBooleanmap
         parameter.put("CtBwidth", 32f);
@@ -131,9 +130,11 @@ public class GraphicsProcessor
 
             case MedianBlur: status = medianblur(); break;
 
-            case FindContours: status = findContures(); break;
+            case FindContours: status = findContoures(); break;
 
             case SplitContours: status = splitContours(); break;
+
+            case FilterContours: status = filterContours(); break;
 
             case DrawContours: status = drawContours(); break;
 
@@ -223,7 +224,7 @@ public class GraphicsProcessor
         return Status.FAILED;
     }
 
-    private Status findContures()
+    private Status findContoures()
     {
         if (data.type == GData.Type.MAT)
         {
@@ -237,10 +238,11 @@ public class GraphicsProcessor
             // Filter the contours to prevent unrealistic ellipses
             ArrayList<Contour> contours = Contour.create(tempContours);
             int minSize = Math.round(source.cols() * parameter.get("FEminSize"));
+            int minArea = Math.round(parameter.get("FEminArea"));
 
             // remove those who are too small to be part of the main ellipse
             for (int i = 0; i < contours.size(); i++) {
-                if(contours.get(i).data.rows() < minSize /*|| contours.get(i).data.cols() < minSize*/) {
+                if(contours.get(i).area < minArea /*|| contours.get(i).data.cols() < minSize*/) {
                     contours.remove(i);
                     i--;
                 }
@@ -255,14 +257,51 @@ public class GraphicsProcessor
         return Status.FAILED;
     }
 
+    private Status filterContours(){
+        if(additionalData != null) {
+            ArrayList<Contour> contours = (ArrayList<Contour>)additionalData;
+
+            double straightnessThreshold = parameter.get("FEstraightnessThreshold");
+
+            // calculate the 'straightness' of a contour
+            // 'straightness' = (total length ptp) / (ideal length end to end)
+            // maybe optimise with root mean square deviation
+            for (int i = 0; i < contours.size(); i++) {
+                MatOfPoint mat = contours.get(i).data;
+                Point[] points = mat.toArray();
+
+                // iterate the points to calculate total length
+                double totalLength = 0;
+                for (int j = 1; j < points.length; j++) {
+                    totalLength += Math.sqrt((points[j].x - points[j - 1].x) * (points[j].x - points[j - 1].x) +
+                            (points[j].y - points[j - 1].y) * (points[j].y - points[j - 1].y));
+                }
+                double idealLength = Math.sqrt((points[points.length - 1].x - points[0].x) * (points[points.length - 1].x - points[0].x) +
+                        (points[points.length - 1].y - points[0].y) * (points[points.length - 1].y - points[0].y));
+                double straightness = idealLength / totalLength;
+
+                // compare with threshold. If straightness is greater, we have a line. Discard it
+                Log.d("FILTER", straightness + " ? " + straightnessThreshold + " -> " + (straightness >= straightnessThreshold));
+                if(straightness >= straightnessThreshold){
+                    contours.remove(i);
+                    i--;
+                }
+            }
+            return Status.PASSED;
+        }
+
+        return Status.FAILED;
+    }
+
     private Status splitContours()
     {
         if(additionalData != null) {
-            ArrayList<Contour> contours = (ArrayList<Contour>) additionalData;
+            ArrayList<Contour> contours = (ArrayList<Contour>)additionalData;
             int minArea = Math.round(parameter.get("FEminArea"));
 
             // try to split each contour
-            for (int i = 0; i < 1 && i < contours.size(); i++) {
+            ArrayList<Contour> tempContours = new ArrayList<>();
+            for (int i = 0; i < contours.size(); i++) {
                 ContourMap map = ContourMap.fromContour(contours.get(i).data);
 
                 // get the split-points
@@ -270,10 +309,11 @@ public class GraphicsProcessor
 
                 if(splitpoints.size() > 0) {
                     // remove the splitpoints from the map data
-                    map.removeSplitpoints();
+                    map.removeSplitpoints2();
 
                     // remove the old contour
                     contours.remove(i);
+                    i--;
 
                     // convert the map back to single contours
                     List<List<Point>> points = map.convertToPoints();
@@ -283,13 +323,18 @@ public class GraphicsProcessor
                         Contour c = new Contour(mat);
 
                         // prefilter contour
-                        if(c.area >= minArea /*&& c.data.cols() > minSize*/) {
-                            contours.add(c);
+                        if(c.area >= minArea) {
+                            Log.d("POINTS", "area = " + c.area + "    -+ " + minArea);
+
+                            tempContours.add(c);
                         }
                     }
                 }
             }
+            contours.addAll(tempContours);
 
+            // resort the contours
+            Collections.sort(contours);
 
             return Status.PASSED;
         }
@@ -307,31 +352,44 @@ public class GraphicsProcessor
             Mat contoursMat = Mat.zeros(target.rows(), target.cols(), CV_8UC3);
             Bitmap contoursBM = getBitmap(contoursMat);
 
-            for (int i = 0; i < 1 && i < contours.size(); i++) {
-                ArrayList<MatOfPoint> mp = new ArrayList<MatOfPoint>();
-                mp.add(contours.get(i).data);
+            //for (int i =  contours.size() - 4; i < contours.size() - 3; i++) {
+            for (int i = 0; i < 1; i++) {
+                contours.get(i).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
+            }
 
+            for (int i = 0; i < 1 && i < contours.size() - 3; i++) {
+                Log.d("Num", "i = " + i);
                 long starttime = System.nanoTime();
                 ContourMap map = ContourMap.fromContour(contours.get(i).data);
-                Log.d("timer",  "From Contour = " + ((System.nanoTime() - starttime) / 1000000) + " ms");
+                Log.d("timer", "From Contour = " + ((System.nanoTime() - starttime) / 1000000) + " ms");
 
                 starttime = System.nanoTime();
                 List<ContourNode> splitp = map.getSplitpoints();
-                Log.d("timer",  "Get Splitpoints = " + ((System.nanoTime() - starttime) / 1000000) + " ms");
+                Log.d("timer", "Get Splitpoints = " + ((System.nanoTime() - starttime) / 1000000) + " ms");
 
                 starttime = System.nanoTime();
-                map.removeSplitpoints();
-                Log.d("timer",  "Remove Splitpoints = " + ((System.nanoTime() - starttime) / 1000000) + " ms");
+                map.removeSplitpoints2();
+                Log.d("timer", "Remove Splitpoints = " + ((System.nanoTime() - starttime) / 1000000) + " ms");
 
                 starttime = System.nanoTime();
                 List<List<Point>> points = map.convertToPoints();
                 List<Contour> newContours = new ArrayList<>(points.size());
-                for (int j = 0; j < points.size(); j++) {
+                for (int j = 0; j < 1 && j < points.size(); j++) {
+                    /*StringBuilder sb = new StringBuilder();
+                    List<Point> list = points.get(j);
+                    for (int k = 0; k < list.size(); k++) {
+                        sb.append("(" + list.get(k).x + "," + list.get(k).y + "),");
+                        if(k % 10 == 0)
+                            sb.append("\n");
+                    }
+                    Log.d("HELP", sb.toString());*/
+
                     MatOfPoint mat = new MatOfPoint();
                     mat.fromList(points.get(j));
                     newContours.add(new Contour(mat));
-                    newContours.get(j).draw(contoursBM, Color.rgb((int)((contours.size() - j) * (255f / contours.size())), (int)(j * (255f / contours.size())), 0));
+                    newContours.get(j).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
                 }
+                //map.draw(contoursBM);
 
                 Log.d("timer",  "Covert to points = " + ((System.nanoTime() - starttime) / 1000000) + " ms");
                 starttime = System.nanoTime();
