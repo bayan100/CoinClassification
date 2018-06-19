@@ -383,7 +383,7 @@ class ContourMap
 
     private void addSplitpixel(int[] seg, int i, List<ContourNode> result){
         // make sure the chosen pixel are connected to the right
-        /*boolean connected = false;
+        boolean connected = false;
         for (int k = seg[0]; k < seg[1] + 1; k++) {
             int ind = getIndex(k, data.get(i))[1];
             ContourNode node = data.get(i).get(ind);
@@ -394,7 +394,7 @@ class ContourMap
                 break;
             }
         }
-        if(true)*/
+        if(connected)
             for (int k = seg[0]; k < seg[1] + 1; k++) {
                 // mark the nodes with the right x-value as splitnodes
                 int ind = getIndex(k, data.get(i))[1];
@@ -516,13 +516,6 @@ class ContourMap
                     list.remove(k);
                     k--;
 
-                    // if the list is empty now, remove it from the overall mix
-                    if(list.size() < 1){
-                        data.remove(i);
-                        segments.remove(i);
-                        break;
-                    }
-
                     // adjust the segments
                     List<int[]> seg = segments.get(i);
                     for (int l = 0; l < seg.size(); l++) {
@@ -559,6 +552,176 @@ class ContourMap
         List<List<Point>> result = new ArrayList<>();
 
         // maintain a list of the current lists we add to
+        QueuedList current = new QueuedList();
+        // init with the first segments
+        for (int i = 0; i < segments.get(0).size(); i++)
+            current.add(i);
+        current.commit();
+
+        // now iterate the segments and classify them
+        for (int k = 1; k < segments.size(); k++) {
+            int i = 0, j = 0;
+            List<int[]> iSeg = segments.get(k - 1);
+            List<int[]> jSeg = segments.get(k);
+            int state = -1;
+            List<ContourNode> segmentdata = data.get(k);
+            int added = 0;
+
+            Log.d("SPLIT", " k = " + k + ", current = " + current.size());
+            Log.d("SPLIT", "     i: " + iSeg.size() + ", j: " + jSeg.size());
+
+            // if this height is missing any segments, end all currently active contours
+            if(jSeg.size() < 1){
+                Log.d("SPLIT", "Continue");
+                for (int l = 0; l < current.size(); l++) {
+                    result.add(current.get(i));
+                }
+                current.clear();
+                continue;
+            }
+
+            StringBuilder sb = new StringBuilder("  i = ");
+            for (int l = 0; l < iSeg.size(); l++) {
+                sb.append("[");
+                sb.append(iSeg.get(l)[0]);
+                sb.append(",");
+                sb.append(iSeg.get(l)[1]);
+                sb.append("], ");
+            }
+            sb.append("   j = ");
+            for (int l = 0; l < jSeg.size(); l++) {
+                sb.append("[");
+                sb.append(jSeg.get(l)[0]);
+                sb.append(",");
+                sb.append(jSeg.get(l)[1]);
+                sb.append("], ");
+            }
+            Log.d("SPLIT", sb.toString());
+
+            while (i < iSeg.size() || j < jSeg.size()) {
+                Log.d("SPLIT", "     i = " + i + ", j = " + j);
+                // case 0:
+                if(i >= iSeg.size()){
+                    Log.d("SPLIT", "     state = 0.1");
+
+                    // end of both segments
+                    if(state == 2 && j + 1 >= jSeg.size())
+                        break;
+
+                    // add a new contour
+                    current.add(j);
+
+                    // insert the points
+                    if(state == 2)
+                        added += addToCurrent(jSeg.get(j + 1), added, segmentdata, current, j);
+                    else
+                        added += addToCurrent(jSeg.get(j), added, segmentdata, current, j);
+                    j++;
+                }
+                else if(j >= jSeg.size()){
+                    Log.d("SPLIT", "     state = 0.2");
+
+                    // end of both segments
+                    if(state == 3 && i + 1 >= iSeg.size())
+                        break;
+
+                    // remove the ended segment from current
+                    result.add(current.get(i));
+                    current.remove(i);
+
+                    i++;
+                }
+
+                // case 1:
+                else if (iSeg.get(i)[1] + 1 < jSeg.get(j)[0]){
+                    Log.d("SPLIT", "     state = 1");
+
+                    // remove the ended segment from current but only if it really is one
+                    if(state != 3) {
+                        result.add(current.get(i));
+                        current.remove(i);
+                    }
+                    i++;
+                    state = 1;
+                }
+                // case 2/5:
+                else if(iSeg.get(i)[1] <= jSeg.get(j)[1]){
+                    Log.d("SPLIT", "     state = 2");
+
+                    // test for merge
+                    if(state == 2)
+                        current.merge(i);
+
+                    // test for split
+                    else if(state == 3)
+                        current.split(j);
+
+                    else
+                        // insert the points
+                        added += addToCurrent(jSeg.get(j), added, segmentdata, current, j);
+
+                    i++;
+                    state = 2;
+                }
+                // case 3/6:
+                else if(iSeg.get(i)[0] - 1 <= jSeg.get(j)[1]){
+                    Log.d("SPLIT", "     state = 3");
+
+                    // test for merge
+                    if(state == 2)
+                        current.merge(i);
+
+                    // test for split
+                    else if(state == 3)
+                        current.split(j);
+
+                    else
+                        // insert the points
+                        added += addToCurrent(jSeg.get(j), added, segmentdata, current, j);
+
+                    j++;
+                    state = 3;
+                }
+                // case 4:
+                else {
+                    Log.d("SPLIT", "     state = 4");
+
+                    // add a new contour only if really a new start
+                    if(state != 2) {
+                        current.add(j);
+
+                        // insert the points
+                        added += addToCurrent(jSeg.get(j), added, segmentdata, current, j);
+                    }
+                    j++;
+                    state = 4;
+                }
+            }
+            // execute all
+            current.commit();
+        }
+
+        // after iterating, merge all open ends who started together, end open ends
+        current.finalCommit(result);
+
+        return result;
+    }
+
+    private int addToCurrent(int[] segment, int added, List<ContourNode> segmentdata, QueuedList current, int index){
+        //Log.d("SPLIT", "     added = " + added + " len = " + (segment[1] - segment[0] + 1));
+        ArrayList<Point> tmp = new ArrayList<>(segment[1] - segment[0] + 1);
+        for (int k = 0; k < segment[1] - segment[0] + 1; k++) {
+            ContourNode item = segmentdata.get(k + added);
+            tmp.add(new Point(item.x, item.y));
+        }
+        current.insert(index, tmp);
+        return segment[1] - segment[0] + 1;
+    }
+/*
+    List<List<Point>> convertToPointsCopy(){
+        List<List<Point>> result = new ArrayList<>();
+
+        // maintain a list of the current lists we add to
         List<List<Point>> current = new ArrayList<>();
         // init with the first segments
         for (int i = 0; i < segments.get(0).size(); i++)
@@ -578,13 +741,22 @@ class ContourMap
             int added = 0;
             int removed = 0;
 
-            //Log.d("SPLIT", " k = " + k + ", current = " + current.size());
+            Log.d("SPLIT", " k = " + k + ", current = " + current.size());
+
+            // if this height is missing any segments, end all currently active contours
+            if(jSeg.size() < 1){
+                for (int l = 0; l < current.size(); l++) {
+                    result.add(current.get(i));
+                }
+                current.clear();
+                continue;
+            }
 
             while (i < iSeg.size() || j < jSeg.size()) {
-                //Log.d("SPLIT", "     i = " + i + ", j = " + j);
+                Log.d("SPLIT", "     i = " + i + ", j = " + j);
                 // case 0:
                 if(i >= iSeg.size()){
-                    //Log.d("SPLIT", "     state = 0.1");
+                    Log.d("SPLIT", "     state = 0.1");
 
                     // end of both segments
                     if(state == 2 && j + 1 >= jSeg.size())
@@ -601,7 +773,7 @@ class ContourMap
                     j++;
                 }
                 else if(j >= jSeg.size()){
-                    //Log.d("SPLIT", "     state = 0.2");
+                    Log.d("SPLIT", "     state = 0.2");
 
                     // end of both segments
                     if(state == 3 && i + 1 >= iSeg.size())
@@ -617,7 +789,7 @@ class ContourMap
 
                 // case 1:
                 else if (iSeg.get(i)[1] + 1 < jSeg.get(j)[0]){
-                    //Log.d("SPLIT", "     state = 1");
+                    Log.d("SPLIT", "     state = 1");
 
                     // remove the ended segment from current but only if it really is one
                     if(state != 3) {
@@ -629,7 +801,7 @@ class ContourMap
                 }
                 // case 2/5:
                 else if(iSeg.get(i)[1] <= jSeg.get(j)[1]){
-                    //Log.d("SPLIT", "     state = 2");
+                    Log.d("SPLIT", "     state = 2");
 
                     // test for merge
                     if(state == 2){
@@ -661,7 +833,7 @@ class ContourMap
                 }
                 // case 3/6:
                 else if(iSeg.get(i)[0] - 1 <= jSeg.get(j)[1]){
-                    //Log.d("SPLIT", "     state = 3");
+                    Log.d("SPLIT", "     state = 3");
 
                     // test for merge
                     if(state == 2){
@@ -693,7 +865,7 @@ class ContourMap
                 }
                 // case 4:
                 else {
-                    //Log.d("SPLIT", "     state = 4");
+                    Log.d("SPLIT", "     state = 4");
 
                     // add a new contour only if really a new start
                     if(state != 2) {
@@ -736,15 +908,8 @@ class ContourMap
 
         return result;
     }
+*/
 
-    private int addToCurrent(int[] segment, int added, List<ContourNode> segmentdata, List<Point> current){
-        //Log.d("SPLIT", "     added = " + added + " len = " + (segment[1] - segment[0] + 1));
-        for (int k = 0; k < segment[1] - segment[0] + 1; k++) {
-            ContourNode item = segmentdata.get(k + added);
-            current.add(new Point(item.x, item.y));
-        }
-        return segment[1] - segment[0] + 1;
-    }
 
     void log()
     {
@@ -791,8 +956,8 @@ class ContourMap
 
                 else if(nodes.get(j).splitNode)
                     colors[matWidth * nodes.get(j).y + nodes.get(j).x] = 0xff00ff00;
-                else if(nodes.get(j).lesserSplitNode)
-                    colors[matWidth * nodes.get(j).y + nodes.get(j).x] = 0xff0000ff;
+                //else if(nodes.get(j).lesserSplitNode)
+                //    colors[matWidth * nodes.get(j).y + nodes.get(j).x] = 0xff0000ff;
                 else
                     colors[matWidth * nodes.get(j).y + nodes.get(j).x] = color;
             }

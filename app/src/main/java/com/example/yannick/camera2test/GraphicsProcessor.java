@@ -324,7 +324,7 @@ public class GraphicsProcessor
 
                         // prefilter contour
                         if(c.area >= minArea) {
-                            Log.d("POINTS", "area = " + c.area + "    -+ " + minArea);
+                            //Log.d("POINTS", "area = " + c.area + "    -+ " + minArea);
 
                             tempContours.add(c);
                         }
@@ -353,11 +353,14 @@ public class GraphicsProcessor
             Bitmap contoursBM = getBitmap(contoursMat);
 
             //for (int i =  contours.size() - 4; i < contours.size() - 3; i++) {
-            for (int i = 0; i < 1; i++) {
+            for (int i = 0; i < 2 &&  i < contours.size(); i++) {
+                Log.d("POINTS2", "area = " + contours.get(i).area);
                 contours.get(i).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
             }
 
-            for (int i = 0; i < 1 && i < contours.size() - 3; i++) {
+            /*
+            //for (int i = contours.size() - 19; i < 100 && i < contours.size() - 18; i++) {
+            for (int i = 0; i < contours.size(); i++) {
                 Log.d("Num", "i = " + i);
                 long starttime = System.nanoTime();
                 ContourMap map = ContourMap.fromContour(contours.get(i).data);
@@ -374,20 +377,12 @@ public class GraphicsProcessor
                 starttime = System.nanoTime();
                 List<List<Point>> points = map.convertToPoints();
                 List<Contour> newContours = new ArrayList<>(points.size());
-                for (int j = 0; j < 1 && j < points.size(); j++) {
-                    /*StringBuilder sb = new StringBuilder();
-                    List<Point> list = points.get(j);
-                    for (int k = 0; k < list.size(); k++) {
-                        sb.append("(" + list.get(k).x + "," + list.get(k).y + "),");
-                        if(k % 10 == 0)
-                            sb.append("\n");
-                    }
-                    Log.d("HELP", sb.toString());*/
+                for (int j = 0; j < 100 && j < points.size(); j++) {
 
                     MatOfPoint mat = new MatOfPoint();
                     mat.fromList(points.get(j));
                     newContours.add(new Contour(mat));
-                    newContours.get(j).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
+                    newContours.get(newContours.size() - 1).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
                 }
                 //map.draw(contoursBM);
 
@@ -401,7 +396,7 @@ public class GraphicsProcessor
 
                 //map.draw(contoursBM);
 
-            }
+            }*/
 
             //data.setMat(contoursMat);
             data.setBitmap(contoursBM);
