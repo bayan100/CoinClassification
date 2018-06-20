@@ -46,7 +46,7 @@ public class Contour implements Comparable {
         }
         area = (size[1] - size[0]) * (size[3] - size[2]);
 
-        analyseContour();
+        //analyseContour();
     }
 
     private void analyseContour()

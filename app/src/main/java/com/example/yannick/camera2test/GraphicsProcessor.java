@@ -78,8 +78,8 @@ public class GraphicsProcessor
     {
         // GrayScale
         //parameter = new HashMap<String, Float>();
-        parameter.put("EDthreshold1", 40f);
-        parameter.put("EDthreshold2", 120f);
+        parameter.put("EDthreshold1", 60f);
+        parameter.put("EDthreshold2", 140f);
 
         // Resize
         parameter.put("Rwidth", 256f);
@@ -91,7 +91,10 @@ public class GraphicsProcessor
         // FindEllipse
         parameter.put("FEminSize", 0.08f);
         parameter.put("FEminArea", 40f);
-        parameter.put("FEstraightnessThreshold", 0.5f);
+
+        // Filter
+        parameter.put("FstraightnessThreshold", 0.5f);
+        parameter.put("FnBasePoints", 5f);
 
         // ConvertToBooleanmap
         parameter.put("CtBwidth", 32f);
@@ -261,32 +264,89 @@ public class GraphicsProcessor
         if(additionalData != null) {
             ArrayList<Contour> contours = (ArrayList<Contour>)additionalData;
 
-            double straightnessThreshold = parameter.get("FEstraightnessThreshold");
-
-            // calculate the 'straightness' of a contour
-            // 'straightness' = (total length ptp) / (ideal length end to end)
-            // maybe optimise with root mean square deviation
+            // calculate the area under the contour with accurate trapeze shape
+            int nBasePoints = Math.round(parameter.get("FnBasePoints"));
             for (int i = 0; i < contours.size(); i++) {
                 MatOfPoint mat = contours.get(i).data;
                 Point[] points = mat.toArray();
 
-                // iterate the points to calculate total length
-                double totalLength = 0;
-                for (int j = 1; j < points.length; j++) {
-                    totalLength += Math.sqrt((points[j].x - points[j - 1].x) * (points[j].x - points[j - 1].x) +
-                            (points[j].y - points[j - 1].y) * (points[j].y - points[j - 1].y));
-                }
-                double idealLength = Math.sqrt((points[points.length - 1].x - points[0].x) * (points[points.length - 1].x - points[0].x) +
-                        (points[points.length - 1].y - points[0].y) * (points[points.length - 1].y - points[0].y));
-                double straightness = idealLength / totalLength;
+                double area = 0;
 
-                // compare with threshold. If straightness is greater, we have a line. Discard it
-                Log.d("FILTER", straightness + " ? " + straightnessThreshold + " -> " + (straightness >= straightnessThreshold));
-                if(straightness >= straightnessThreshold){
-                    contours.remove(i);
-                    i--;
+                double sy = points[points.length - 1].y - points[0].y;
+                double sx = points[points.length - 1].x - points[0].x;
+                double m = sy / sx;
+                //Log.d("AREA", "m = " + m);
+                double m_ = m + 1 / m;
+                //Log.d("AREA", "m_ = " + m_);
+
+                double c = points[0].y - m * points[0].x;
+
+                double side = 0;
+                double h0 = 0;
+                double xj = 0, yj = 0;
+                double xj_ = 0, yj_ = 0;
+                double dx = (points.length / nBasePoints);
+
+                for (int j = 1; j < nBasePoints; j++) {
+                    int k = (int)(j * dx);
+                    //Log.d("AREA", "k = " + k);
+                    double xi = points[k].x, yi = points[k].y;
+
+                    // get the coordinates on the baseline
+                    double x_ = (yi + xi / m - c) / m_;
+                    double y_ = x_ * m + c;
+
+                    //Log.d("AREA", "    coord xi: " + xi + ", yi: " + yi);
+                    //Log.d("AREA", "    baseline coord x_: " + x_ + ", y_: " + y_);
+
+                    // compute on which side of the line the contour point lies
+                    double side_ = Math.signum((xi - points[0].x) * sy - (yi - points[0].y) * sx);
+                    //Log.d("AREA", "    side: " + side_ + " (old: " + side + ")");
+
+                    // if not on the same side:
+                    if(side != side_ && side != 0) {
+                        // calculate the zeropoint between the two
+                        double m0 = (yj - yi) / (xj - xi);
+                        double x0 = (yi - m0 * xi - c) / (m - m0);
+                        double y0 = x0 * m0 + (yi - m0 * xi) + c;
+
+                        // now add the area from xj_ to x0 and x0 to x_
+                        double d0 = Math.sqrt((x0 - xj_) * (x0 - xj_) + (y0 - yj_) * (y0 - yj_));
+                        area += side * d0 * h0 / 2;
+
+                        double h = Math.sqrt((y_ - yi) * (y_ - yi) + (x_ - xi) * (x_ - xi));
+                        d0 = Math.sqrt((x0 - x_) * (x0 - x_) + (y0 - y_) * (y0 - y_));
+                        area += side_ * d0 * h / 2;
+                    }
+                    else {
+                        // calculate length from point n curve to base point
+                        double h = Math.sqrt((y_ - yi) * (y_ - yi) + (x_ - xi) * (x_ - xi));
+                        double da = (h + h0) / 2 * dx;
+
+                        h0 = h;
+                        // add area according to side, that way a curve has more than a wobbly line
+                        area += da * side_;
+                    }
+
+                    side = side_;
+                    xj = xi;
+                    yj = yi;
+                    xj_ = x_;
+                    yj_ = y_;
                 }
+
+                //Log.d("AREA", "i = " + i + ", area = " + area);
+
+                // save the accurate area
+                if(!Double.isNaN(area))
+                    contours.get(i).area = Math.abs(area);
+                else
+                    contours.get(i).area = -1;
             }
+
+            // resort the contours
+            Collections.sort(contours);
+
             return Status.PASSED;
         }
 
@@ -307,7 +367,7 @@ public class GraphicsProcessor
                 // get the split-points
                 List<ContourNode> splitpoints = map.getSplitpoints();
 
-                if(splitpoints.size() > 0) {
+                /*if(splitpoints.size() > 0)*/ {
                     // remove the splitpoints from the map data
                     map.removeSplitpoints2();
 
@@ -318,15 +378,16 @@ public class GraphicsProcessor
                     // convert the map back to single contours
                     List<List<Point>> points = map.convertToPoints();
                     for (int j = 0; j < points.size(); j++) {
-                        MatOfPoint mat = new MatOfPoint();
-                        mat.fromList(points.get(j));
-                        Contour c = new Contour(mat);
+                        if(points.get(j).size() > 5) {
+                            MatOfPoint mat = new MatOfPoint();
+                            mat.fromList(points.get(j));
+                            Contour c = new Contour(mat);
 
-                        // prefilter contour
-                        if(c.area >= minArea) {
-                            //Log.d("POINTS", "area = " + c.area + "    -+ " + minArea);
-
-                            tempContours.add(c);
+                            // prefilter contour
+                            if (c.area >= minArea) {
+                                //Log.d("POINTS", "area = " + c.area + "    -+ " + minArea);
+                                tempContours.add(c);
+                            }
                         }
                     }
                 }
@@ -353,14 +414,18 @@ public class GraphicsProcessor
             Bitmap contoursBM = getBitmap(contoursMat);
 
             //for (int i =  contours.size() - 4; i < contours.size() - 3; i++) {
-            for (int i = 0; i < 2 &&  i < contours.size(); i++) {
-                Log.d("POINTS2", "area = " + contours.get(i).area);
-                contours.get(i).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
+            for (int i = 0; i < contours.size(); i++) {
+                //Log.d("POINTS2", "area = " + contours.get(i).area);
+                if(i != 0)
+                    contours.get(i).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
+                else
+                    contours.get(i).draw(contoursBM, Color.rgb(255, 255, 255));
+                //contours.get(i).drawMultiColored(contoursBM);
             }
 
-            /*
+
             //for (int i = contours.size() - 19; i < 100 && i < contours.size() - 18; i++) {
-            for (int i = 0; i < contours.size(); i++) {
+            /*for (int i = 0; i < contours.size(); i++) {
                 Log.d("Num", "i = " + i);
                 long starttime = System.nanoTime();
                 ContourMap map = ContourMap.fromContour(contours.get(i).data);
@@ -377,14 +442,15 @@ public class GraphicsProcessor
                 starttime = System.nanoTime();
                 List<List<Point>> points = map.convertToPoints();
                 List<Contour> newContours = new ArrayList<>(points.size());
-                for (int j = 0; j < 100 && j < points.size(); j++) {
-
-                    MatOfPoint mat = new MatOfPoint();
-                    mat.fromList(points.get(j));
-                    newContours.add(new Contour(mat));
-                    newContours.get(newContours.size() - 1).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
+                for (int j = 0; j < points.size(); j++) {
+                    if(points.get(j).size() > 5) {
+                        MatOfPoint mat = new MatOfPoint();
+                        mat.fromList(points.get(j));
+                        newContours.add(new Contour(mat));
+                        newContours.get(newContours.size() - 1).draw(contoursBM, Color.rgb((int) ((contours.size() - i) * (255f / contours.size())), (int) (i * (255f / contours.size())), 0));
+                    }
                 }
-                //map.draw(contoursBM);
+                //map.draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
 
                 Log.d("timer",  "Covert to points = " + ((System.nanoTime() - starttime) / 1000000) + " ms");
                 starttime = System.nanoTime();
@@ -416,11 +482,25 @@ public class GraphicsProcessor
                 MatOfPoint2f dst = new MatOfPoint2f();
                 contours.get(i).data.convertTo(dst, CvType.CV_32FC2);
 
-                Log.d("FINDELLIPSE", " " + dst.toString());
-
                 ellipses.add(Imgproc.fitEllipse(dst));
+            }
 
-                Log.d("FINDELLIPSE", "center: " + ellipses.get(i).center.toString() + " size: " + ellipses.get(i).size);
+            // average the first 3 ellipses with close parameters
+            RotatedRect e0 = ellipses.get(0);
+            Log.d("ELLIPSE", "e0: " + e0.toString());
+            for (int i = 1; i < 3 && i < ellipses.size(); i++) {
+                RotatedRect e = ellipses.get(i);
+                Log.d("ELLIPSE", e.toString());
+                if(Math.sqrt((e.center.x - e0.center.x) * (e.center.x - e0.center.x) + (e.center.y - e0.center.y) * (e.center.y - e0.center.y)) < 5
+                        && Math.abs(e.size.width - e0.size.width) < 10
+                        && Math.abs(e.size.height - e0.size.height) < 10
+                        /*&& Math.abs(e.angle - e0.angle) < 5*/){
+                    // average
+                    e0.center = new Point((e.center.x + e0.center.x ) / 2, (e.center.y + e0.center.y) / 2);
+                    e0.size = new Size((e.size.width + e0.size.width) / 2, (e.size.height + e0.size.height) / 2);
+                    //e0.angle = (e.angle + e0.angle) / 2;
+                    Log.d("ELLIPSE", "average nr. " + i);
+                }
             }
 
             additionalData = ellipses;
@@ -435,10 +515,10 @@ public class GraphicsProcessor
         {
             Mat image = data.getMat();
             ArrayList<RotatedRect> ellipses = (ArrayList<RotatedRect>)additionalData;
-            //for (int i = 0; i < ellipses.size(); i++) {
-            //    Imgproc.ellipse(image, ellipses.get(i), new Scalar(255, 0, 0), 2);
-            //}
-            Imgproc.ellipse(image, ellipses.get(0), new Scalar(255, 0, 0), 2);
+            for (int i = 0; i < 1 && i < ellipses.size(); i++) {
+                Imgproc.ellipse(image, ellipses.get(i), new Scalar(255, 0, 0), 2);
+            }
+            //Imgproc.ellipse(image, ellipses.get(0), new Scalar(255, 0, 0), 2);
 
             data.setMat(image);
 
