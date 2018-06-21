@@ -18,6 +18,7 @@ import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -485,8 +486,32 @@ public class GraphicsProcessor
                 ellipses.add(Imgproc.fitEllipse(dst));
             }
 
-            // average the first 3 ellipses with close parameters
+            // check if the first Ellipses have similar center (indicating one is the outer and the other the inner ring
             RotatedRect e0 = ellipses.get(0);
+            Log.d("ELLIPSE", "e0: " + e0.toString());
+            for (int i = 1; i < ellipses.size(); i++) {
+                RotatedRect e1 = ellipses.get(i);
+                Log.d("ELLIPSE", e1.toString());
+                if(Math.sqrt((e1.center.x - e0.center.x) * (e1.center.x - e0.center.x) + (e1.center.y - e0.center.y) * (e1.center.y - e0.center.y)) < 5) {
+                    // search for an ellipse that is bigger by a good margin than the first
+                    if(e0.size.width * e0.size.height < 0.9 * e1.size.width * e1.size.height){
+                        ellipses.set(0, e1);
+                        ellipses.set(i, e0);
+                        break;
+                    }
+                }
+            }
+
+            /*
+            Collections.sort(ellipses, new Comparator<RotatedRect>() {
+                @Override
+                public int compare(RotatedRect o1, RotatedRect o2) {
+                    return -1 * Double.compare(o1.size.width * o1.size.height, o2.size.width * o2.size.height);
+                }
+            });
+*/
+            // average the first 3 ellipses with close parameters
+            /*RotatedRect e0 = ellipses.get(0);
             Log.d("ELLIPSE", "e0: " + e0.toString());
             for (int i = 1; i < 3 && i < ellipses.size(); i++) {
                 RotatedRect e = ellipses.get(i);
@@ -494,14 +519,14 @@ public class GraphicsProcessor
                 if(Math.sqrt((e.center.x - e0.center.x) * (e.center.x - e0.center.x) + (e.center.y - e0.center.y) * (e.center.y - e0.center.y)) < 5
                         && Math.abs(e.size.width - e0.size.width) < 10
                         && Math.abs(e.size.height - e0.size.height) < 10
-                        /*&& Math.abs(e.angle - e0.angle) < 5*/){
+                        ){
                     // average
                     e0.center = new Point((e.center.x + e0.center.x ) / 2, (e.center.y + e0.center.y) / 2);
                     e0.size = new Size((e.size.width + e0.size.width) / 2, (e.size.height + e0.size.height) / 2);
                     //e0.angle = (e.angle + e0.angle) / 2;
                     Log.d("ELLIPSE", "average nr. " + i);
                 }
-            }
+            }*/
 
             additionalData = ellipses;
             return Status.PASSED;
