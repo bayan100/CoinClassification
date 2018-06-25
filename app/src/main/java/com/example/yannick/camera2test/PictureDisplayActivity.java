@@ -105,10 +105,8 @@ public class PictureDisplayActivity extends AppCompatActivity {
         String filepath = intent.getStringExtra("File");
 
         try {
-            //String testpath = "/sdcard/Pictures/Testpictures/2Euro2.jpg";
+            //String testpath = "/sdcard/Pictures/Testpictures/2Euro1.jpg";
             //bitmap = BitmapFactory.decodeFile(testpath);
-
-            //Log.d("BITMAP", (bitmap == null) + "");
 
             bitmap = BitmapFactory.decodeStream(this.openFileInput(filepath));
             bitmap = bitmap.copy( Bitmap.Config.ARGB_8888 , true);

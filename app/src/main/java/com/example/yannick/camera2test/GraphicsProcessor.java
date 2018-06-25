@@ -79,8 +79,8 @@ public class GraphicsProcessor
     {
         // GrayScale
         //parameter = new HashMap<String, Float>();
-        parameter.put("EDthreshold1", 60f);
-        parameter.put("EDthreshold2", 140f);
+        parameter.put("EDthreshold1", 50f);
+        parameter.put("EDthreshold2", 130f);
 
         // Resize
         parameter.put("Rwidth", 256f);
@@ -418,15 +418,43 @@ public class GraphicsProcessor
             for (int i = 0; i < contours.size(); i++) {
                 //Log.d("POINTS2", "area = " + contours.get(i).area);
                 if(i != 0)
-                    contours.get(i).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
+                    //contours.get(i).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
+                    contours.get(i).draw(contoursBM, Color.HSVToColor(new float[] {i * (255f / contours.size()), 255f, 255f}));
                 else
                     contours.get(i).draw(contoursBM, Color.rgb(255, 255, 255));
                 //contours.get(i).drawMultiColored(contoursBM);
             }
 
+            /*ContourMap map = new ContourMap();
+            map.insert(3,-1);
+            map.insert(2,-2);
+            map.insert(1,-2);
+            map.insert(0,-1);
+            map.insert(0,0);
+            map.insert(0,1);
+            map.insert(0,2);
+            map.insert(0,3);
+            map.insert(1,4);
+            map.insert(2,4);
+            map.insert(3,3);
+            map.insert(3,2);
+            map.insert(4,1);
 
+            map.getSplitpoints();
+            map.removeSplitpoints2();
+            List<List<Point>> points = map.convertToPoints();
+            List<Contour> newContours = new ArrayList<>(points.size());
+            for (int j = 0; j < points.size(); j++) {
+                StringBuilder sb = new StringBuilder();
+                for (int k = 0; k < points.get(j).size(); k++) {
+                    sb.append(points.get(j).get(k).toString() + ", ");
+
+                }
+                Log.d("CONTOUR", "||| " + sb.toString());
+            }
+/*
             //for (int i = contours.size() - 19; i < 100 && i < contours.size() - 18; i++) {
-            /*for (int i = 0; i < contours.size(); i++) {
+            for (int i = 0; i < 1 && i < contours.size(); i++) {
                 Log.d("Num", "i = " + i);
                 long starttime = System.nanoTime();
                 ContourMap map = ContourMap.fromContour(contours.get(i).data);
@@ -443,12 +471,23 @@ public class GraphicsProcessor
                 starttime = System.nanoTime();
                 List<List<Point>> points = map.convertToPoints();
                 List<Contour> newContours = new ArrayList<>(points.size());
-                for (int j = 0; j < points.size(); j++) {
+                for (int j = 5; j < 6 && j < points.size(); j++) {
+                    StringBuilder sb = new StringBuilder();
+                    for (int k = 0; k < points.get(j).size(); k++) {
+                        sb.append(points.get(j).get(k).toString() + ", ");
+                        if(k % 10 == 0)
+                            sb.append("\n");
+                    }
+                    Log.d("CONTOUR", "#-#-#" + sb.toString());
                     if(points.get(j).size() > 5) {
+
+
                         MatOfPoint mat = new MatOfPoint();
                         mat.fromList(points.get(j));
                         newContours.add(new Contour(mat));
-                        newContours.get(newContours.size() - 1).draw(contoursBM, Color.rgb((int) ((contours.size() - i) * (255f / contours.size())), (int) (i * (255f / contours.size())), 0));
+                        //newContours.get(newContours.size() - 1).draw(contoursBM, Color.rgb((int) ((contours.size() - i) * (255f / contours.size())), (int) (i * (255f / contours.size())), 0));
+                        newContours.get(newContours.size() - 1).draw(contoursBM, Color.HSVToColor(new float[] {j * (255f / contours.size()), 255f, 255f}));
+                        //newContours.get(newContours.size() - 1).drawMultiColored(contoursBM);
                     }
                 }
                 //map.draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
