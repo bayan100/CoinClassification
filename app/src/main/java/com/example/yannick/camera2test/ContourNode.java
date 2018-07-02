@@ -809,10 +809,9 @@ class ContourMap
         material.setPixels(colors, 0, matWidth, 0,0, matWidth, matHeight);
     }
 
-    static ContourMap fromContour(MatOfPoint data)
+    static ContourMap fromContour(Point[] points)
     {
         ContourMap map = new ContourMap();
-        Point[] points = data.toArray();
 
         for (int i = 0; i < points.length; i++) {
             map.insert((int)points[i].x, (int)points[i].y);

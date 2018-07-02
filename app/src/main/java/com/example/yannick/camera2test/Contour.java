@@ -3,6 +3,7 @@ package com.example.yannick.camera2test;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.support.annotation.NonNull;
+import android.util.Log;
 
 import org.opencv.core.MatOfInt;
 import org.opencv.core.MatOfPoint;
@@ -13,19 +14,16 @@ import java.util.ArrayList;
 
 public class Contour implements Comparable {
     MatOfPoint data;
+    Point[] points;
     MatOfPoint convexContour;
     double[] size;
     double area;
-    boolean closedCurve;
 
-    double isLineConfidence;
-    double curvaturQuality;
-
-    public Contour(MatOfPoint data) {
+    Contour(MatOfPoint data) {
         this.data = data;
 
         // convert and find the dimension in space
-        Point[] points = data.toArray();
+        points = data.toArray();
         size = new double[4];
         size[0] = points[0].x;
         size[2] = points[0].y;
@@ -49,6 +47,44 @@ public class Contour implements Comparable {
         //analyseContour();
     }
 
+    int[] getEndDirection(){
+        // simple linear regression on the last n points
+        int n = 5;
+
+        // find x- and y-mean
+        double xMean = 0, yMean = 0;
+        for (int i = points.length - n; i < points.length; i++) {
+            xMean += points[i].x;
+            yMean += points[i].y;
+        }
+        xMean /= n;
+        yMean /= n;
+
+        double bx2 = 0, bxy = 0;
+        for (int i = points.length - n; i < points.length; i++) {
+            bxy += (points[i].x - xMean) * (points[i].y - yMean);
+            bx2 += (points[i].x - xMean) * (points[i].x - xMean);
+        }
+        double m = bxy / bx2;
+
+        // convert to direction
+        int direction = (Math.abs(m) < 0.5 ? 2 : 0) + (m < 0 ? 1 : 0);
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < points.length; i++) {
+            if(i % 10 == 0)
+                sb.append("\n");
+            sb.append("(" );
+            sb.append(points[i].x);
+            sb.append(",");
+            sb.append(points[i].y);
+            sb.append("), ");
+        }
+        Log.d("OTSU", sb.toString());
+
+        return new int[] {(int)points[points.length - 1].x, (int)points[points.length - 1].y, direction};
+    }
+
     private void analyseContour()
     {
         // start by getting the convex hull with some parameters
@@ -62,6 +98,7 @@ public class Contour implements Comparable {
 
     private void calcConvexHull()
     {
+        /*
         // get the convex hull from the contour
         MatOfInt hull = new MatOfInt();
         Imgproc.convexHull(data, hull);
@@ -109,13 +146,14 @@ public class Contour implements Comparable {
         // convert to matOfPoint to draw
         convexContour = new MatOfPoint();
         convexContour.fromArray(points);
+        */
     }
 
     private double slopeTolerance = 0.9;
     private void calcLineConfidence()
     {
         // start with the results from the convex hull
-        Point[] points = convexContour.toArray();
+        /*Point[] points = convexContour.toArray();
 
         // if the contour is not closed it might be a line
         if(!closedCurve) {
@@ -134,7 +172,7 @@ public class Contour implements Comparable {
 
             // set the confidence as number of pixels on the line divided by total pixels
             isLineConfidence = confidenceCounter / (double)points.length;
-        }
+        }*/
     }
 
     private double dist(Point p1, Point p2) {

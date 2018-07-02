@@ -52,6 +52,8 @@ public class GraphicsProcessor
         DrawEllipse,
         DrawContours,
 
+        LocalOtsu,
+
         FindCorners,
 
         ResizeImage,
@@ -145,6 +147,8 @@ public class GraphicsProcessor
             case FindEllipse: status = findEllipse(); break;
 
             case DrawEllipse: status = drawEllipse(); break;
+
+            case LocalOtsu: status = localOtsu(); break;
 
             case ResizeImage: status = resizeImage(); break;
 
@@ -268,8 +272,7 @@ public class GraphicsProcessor
             // calculate the area under the contour with accurate trapeze shape
             int nBasePoints = Math.round(parameter.get("FnBasePoints"));
             for (int i = 0; i < contours.size(); i++) {
-                MatOfPoint mat = contours.get(i).data;
-                Point[] points = mat.toArray();
+                Point[] points = contours.get(i).points;
 
                 double area = 0;
 
@@ -363,7 +366,7 @@ public class GraphicsProcessor
             // try to split each contour
             ArrayList<Contour> tempContours = new ArrayList<>();
             for (int i = 0; i < contours.size(); i++) {
-                ContourMap map = ContourMap.fromContour(contours.get(i).data);
+                ContourMap map = ContourMap.fromContour(contours.get(i).points);
 
                 // get the split-points
                 List<ContourNode> splitpoints = map.getSplitpoints();
@@ -420,8 +423,10 @@ public class GraphicsProcessor
                 if(i != 0)
                     //contours.get(i).draw(contoursBM, Color.rgb((int)((contours.size() - i) * (255f / contours.size())), (int)(i * (255f / contours.size())), 0));
                     contours.get(i).draw(contoursBM, Color.HSVToColor(new float[] {i * (255f / contours.size()), 255f, 255f}));
-                else
+                else {
+                    Log.d("OTSU", "size: " + contours.get(i).points.length);
                     contours.get(i).draw(contoursBM, Color.rgb(255, 255, 255));
+                }
                 //contours.get(i).drawMultiColored(contoursBM);
             }
 
@@ -549,8 +554,8 @@ public class GraphicsProcessor
                 }
             });
 */
-            // average the first 3 ellipses with close parameters
-            /*RotatedRect e0 = ellipses.get(0);
+            // average the first ellipses with close parameters
+           /* e0 = ellipses.get(0);
             Log.d("ELLIPSE", "e0: " + e0.toString());
             for (int i = 1; i < 3 && i < ellipses.size(); i++) {
                 RotatedRect e = ellipses.get(i);
@@ -589,6 +594,17 @@ public class GraphicsProcessor
             return Status.PASSED;
         }
         return Status.FAILED;
+    }
+
+    private Status localOtsu(){
+        Mat source = data.getMat();
+        Contour c = ((ArrayList<Contour>)additionalData).get(0);
+        Log.d("OTSU", "size: " + c.points.length);
+        LocalOtsuProcessor processor = new LocalOtsuProcessor(source, ((ArrayList<Contour>)additionalData).get(0), 16);
+        data.setMat(processor.run());
+        return Status.PASSED;
+
+        //return Status.FAILED;
     }
 
     private Status findCorners()

@@ -22,8 +22,11 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 
 public class PictureDisplayActivity extends AppCompatActivity {
 
@@ -32,7 +35,7 @@ public class PictureDisplayActivity extends AppCompatActivity {
 
     private Bitmap bitmap;
 
-    private Button button_blur, button_canny, button_contours, button_ellipses;
+    private Button button_blur, button_canny, button_contours, button_ellipses, button_save, button_otsu;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -99,17 +102,48 @@ public class PictureDisplayActivity extends AppCompatActivity {
         button_ellipses.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) { (new AGPFindEllipses(bitmap, progressBar, imageView)).execute(); }
         });
+        button_save = findViewById(R.id.button_save);
+        button_save.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                Date dNow = new Date( );
+                SimpleDateFormat ft = new SimpleDateFormat("yyyy.MM.dd_hh:mm:ss");
+                String testpath = "/sdcard/Pictures/Testpictures/Example" + ft.format(dNow) + ".jpg";
+
+                FileOutputStream out = null;
+                try {
+                    out = new FileOutputStream(testpath);
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out); // bmp is your Bitmap instance
+                    // PNG is a lossless format, the compression factor (100) is ignored
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    try {
+                        if (out != null) {
+                            out.close();
+                            button_save.setEnabled(false);
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+            }
+        });
+        button_otsu = findViewById(R.id.button_otsu);
+        button_otsu.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) { (new AGPOtsu(bitmap, progressBar, imageView)).execute(); }
+        });
 
         // Load the photo
         Intent intent = getIntent();
         String filepath = intent.getStringExtra("File");
 
         try {
-            //String testpath = "/sdcard/Pictures/Testpictures/2Euro1.jpg";
-            //bitmap = BitmapFactory.decodeFile(testpath);
+            String testpath = "/sdcard/Pictures/Testpictures/otsutest.jpg";
+            bitmap = BitmapFactory.decodeFile(testpath);
 
-            bitmap = BitmapFactory.decodeStream(this.openFileInput(filepath));
-            bitmap = bitmap.copy( Bitmap.Config.ARGB_8888 , true);
+            //bitmap = BitmapFactory.decodeStream(this.openFileInput(filepath));
+            //bitmap = bitmap.copy( Bitmap.Config.ARGB_8888 , true);
 
             Log.d("SUCCESS", "Loaded: " + filepath);
             imageView.setImageBitmap(bitmap);
@@ -120,6 +154,8 @@ public class PictureDisplayActivity extends AppCompatActivity {
 
     public void onResume() {
         super.onResume();
+
+        button_save.setEnabled(true);
         if (!OpenCVLoader.initDebug()) {
             Log.d("OpenCV", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
             OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);

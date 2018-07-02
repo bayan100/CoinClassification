@@ -44,9 +44,7 @@
         android:id="@+id/button_blur"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Blur"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:text="Blur" />
 
     <Button
         android:id="@+id/button_ellipses"
@@ -56,5 +54,24 @@
         android:text="Ellipses"
         app:layout_constraintStart_toEndOf="@+id/button_contours"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/button_save"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="SAVE"
+        app:layout_constraintTop_toBottomOf="@+id/button_blur"
+        tools:layout_editor_absoluteX="0dp" />
+
+    <Button
+        android:id="@+id/button_otsu"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:text="Otsu"
+        app:layout_constraintStart_toEndOf="@+id/button_save"
+        app:layout_constraintTop_toBottomOf="@+id/button_canny" />
 
 </android.support.constraint.ConstraintLayout>
