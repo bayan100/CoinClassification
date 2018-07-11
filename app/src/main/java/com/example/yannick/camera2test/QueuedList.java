@@ -55,13 +55,13 @@ public class QueuedList {
         int counter = 0;
         for (int i = 0; i < operations.size(); i++) {
             QueuedListNode node = operations.get(i);
-            //Log.d("SPLIT", "    " + i + ". op: " + node.operation);
+            ////Log.d("SPLIT", "    " + i + ". op: " + node.operation);
             switch (node.operation){
                 case ADD: data.add(node.index, new ArrayList<Point>());
                     counter++;
                     break;
                 case INSERT: data.get(node.index).addAll(node.additionalData);
-                    Log.d("SPLIT", "inserting: " + node.additionalData + "\n    into: (" + node.index + ") " + data.get(node.index).toString());
+                    //Log.d("SPLIT", "inserting: " + node.additionalData + "\n    into: (" + node.index + ") " + data.get(node.index).toString());
                     break;
                 case REMOVE:
                     // check if list is part of a merge
@@ -89,7 +89,7 @@ public class QueuedList {
                     break;
                 case MERGE:
                     // invert the upper contour and append to lower
-                    Log.d("SPLIT", "MERGE! " + (node.index + counter));
+                    //Log.d("SPLIT", "MERGE! " + (node.index + counter));
                     Collections.reverse(data.get(node.index + counter));
                     data.get(node.index + counter - 1).addAll(data.get(node.index + counter));
 
@@ -115,11 +115,11 @@ public class QueuedList {
         for (int i = 0; i < toMerge0.size(); i++) {
             // find them in the result list
             int ind = result.indexOf(toMerge0.get(i));
-            //Log.d("MERGE", "res 0 = " + ind);
+            ////Log.d("MERGE", "res 0 = " + ind);
             if(ind != -1)
                 result.remove(ind);
             ind = result.indexOf(toMerge1.get(i));
-            //Log.d("MERGE", "res 1 = " + ind);
+            ////Log.d("MERGE", "res 1 = " + ind);
             if(ind != -1)
                 result.remove(ind);
 
@@ -129,19 +129,19 @@ public class QueuedList {
 
             // remove from current to later not add again
             ind = data.indexOf(toMerge0.get(i));
-            //Log.d("MERGE", "tm 0 = " + ind);
+            ////Log.d("MERGE", "tm 0 = " + ind);
 
-            //Log.d("MERGE", "data = " + toMerge0.toString());
+            ////Log.d("MERGE", "data = " + toMerge0.toString());
             if(ind != -1)
                 data.remove(ind);
             ind = data.indexOf(toMerge1.get(i));
 
-            //Log.d("MERGE", "tm 1 = " + ind);
+            ////Log.d("MERGE", "tm 1 = " + ind);
             if(ind != -1)
                 data.remove(ind);
         }
 
-        //Log.d("SPLIT", " merge? " + toMerge0.size());
+        ////Log.d("SPLIT", " merge? " + toMerge0.size());
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < data.size(); i++) {
             sb.append("[");
@@ -155,7 +155,7 @@ public class QueuedList {
             }
             sb.append("]\n");
         }
-        //Log.d("SPLIT", " rest: " + sb.toString());
+        ////Log.d("SPLIT", " rest: " + sb.toString());
 
         // add the remaining open ends (without partner) to result
         result.addAll(data);

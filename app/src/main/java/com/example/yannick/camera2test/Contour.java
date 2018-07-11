@@ -11,6 +11,9 @@ import org.opencv.core.Point;
 import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public class Contour implements Comparable {
     MatOfPoint data;
@@ -47,6 +50,19 @@ public class Contour implements Comparable {
         //analyseContour();
     }
 
+    void appendPoints(List<Point> p){
+        MatOfPoint matOfPoint = new MatOfPoint();
+
+        ArrayList<Point> tmp = new ArrayList<>();
+        Collections.addAll(tmp, points);
+        tmp.addAll(p);
+
+        matOfPoint.fromList(tmp);
+        data = matOfPoint;
+
+        points = tmp.toArray(new Point[tmp.size()]);
+    }
+
     int[] getEndDirection(){
         // simple linear regression on the last n points
         int n = 5;
@@ -67,10 +83,15 @@ public class Contour implements Comparable {
         }
         double m = bxy / bx2;
 
-        // convert to direction
-        int direction = (Math.abs(m) < 0.5 ? 2 : 0) + (m < 0 ? 1 : 0);
+        //Log.d("OTSU", "m: " + m + ", " + (points[points.length - n].x <= points[points.length - 1].x) + ", " + (points[points.length - n].y <= points[points.length - 1].y));
 
-        StringBuilder sb = new StringBuilder();
+                // convert to direction
+        int direction = (Math.abs(m) < 1 ? 2 : 0);
+        direction += (direction == 2 ? ((points[points.length - n].x <= points[points.length - 1].x) ? 0 : 1)
+                : ((points[points.length - n].y <= points[points.length - 1].y) ? 0 : 1));
+        direction++; // + UNDEFINED
+
+        /*StringBuilder sb = new StringBuilder();
         for (int i = 0; i < points.length; i++) {
             if(i % 10 == 0)
                 sb.append("\n");
@@ -80,7 +101,7 @@ public class Contour implements Comparable {
             sb.append(points[i].y);
             sb.append("), ");
         }
-        Log.d("OTSU", sb.toString());
+        Log.d("OTSU", sb.toString());*/
 
         return new int[] {(int)points[points.length - 1].x, (int)points[points.length - 1].y, direction};
     }

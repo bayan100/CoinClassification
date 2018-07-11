@@ -602,6 +602,8 @@ public class GraphicsProcessor
         Log.d("OTSU", "size: " + c.points.length);
         LocalOtsuProcessor processor = new LocalOtsuProcessor(source, ((ArrayList<Contour>)additionalData).get(0), 16);
         data.setMat(processor.run());
+        ((ArrayList<Contour>)additionalData).set(0, processor.contour);
+
         return Status.PASSED;
 
         //return Status.FAILED;

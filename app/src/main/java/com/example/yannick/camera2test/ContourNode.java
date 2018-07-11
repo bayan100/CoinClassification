@@ -274,7 +274,7 @@ class ContourMap
     {
         List<ContourNode> result = new ArrayList<>();
 
-        Log.d("SEGMENTS", "datasize: " + data.size());
+        //Log.d("SEGMENTS", "datasize: " + data.size());
 
         // scan the field top to bottom (scanline in y)
         List<List<int[]>> segments = new ArrayList<>();
@@ -570,12 +570,12 @@ class ContourMap
             List<ContourNode> segmentdata = data.get(k);
             int added = 0;
 
-            Log.d("SPLIT", " k = " + k + ", current = " + current.size());
-            Log.d("SPLIT", "     i: " + iSeg.size() + ", j: " + jSeg.size());
+            //Log.d("SPLIT", " k = " + k + ", current = " + current.size());
+            //Log.d("SPLIT", "     i: " + iSeg.size() + ", j: " + jSeg.size());
 
             // if this height is missing any segments, end all currently active contours
             if(jSeg.size() < 1){
-                Log.d("SPLIT", "Continue");
+                //Log.d("SPLIT", "Continue");
                 for (int l = 0; l < current.size(); l++) {
                     result.add(current.get(i));
                 }
@@ -599,13 +599,13 @@ class ContourMap
                 sb.append(jSeg.get(l)[1]);
                 sb.append("], ");
             }
-            Log.d("SPLIT", sb.toString());
+            //Log.d("SPLIT", sb.toString());
 
             while (i < iSeg.size() || j < jSeg.size()) {
-                Log.d("SPLIT", "     i = " + i + ", j = " + j);
+                //Log.d("SPLIT", "     i = " + i + ", j = " + j);
                 // case 0:
                 if(i >= iSeg.size()){
-                    Log.d("SPLIT", "     state = 0.1");
+                    //Log.d("SPLIT", "     state = 0.1");
 
                     // end of both segments
                     if(state == 2 && j + 1 >= jSeg.size())
@@ -623,7 +623,7 @@ class ContourMap
                     j++;
                 }
                 else if(j >= jSeg.size()){
-                    Log.d("SPLIT", "     state = 0.2");
+                    //Log.d("SPLIT", "     state = 0.2");
 
                     // end of both segments
                     if(state == 3) {
@@ -640,7 +640,7 @@ class ContourMap
 
                 // case 1:
                 else if (iSeg.get(i)[1] + 1 < jSeg.get(j)[0]){
-                    Log.d("SPLIT", "     state = 1");
+                    //Log.d("SPLIT", "     state = 1");
 
                     // remove the ended segment from current but only if it really is one
                     if(state != 3) {
@@ -652,7 +652,7 @@ class ContourMap
                 }
                 // case 2/5:
                 else if(iSeg.get(i)[1] <= jSeg.get(j)[1]){
-                    Log.d("SPLIT", "     state = 2");
+                    //Log.d("SPLIT", "     state = 2");
 
                     // test for merge
                     if(state == 2)
@@ -672,7 +672,7 @@ class ContourMap
                 }
                 // case 3/6:
                 else if(iSeg.get(i)[0] - 1 <= jSeg.get(j)[1]){
-                    Log.d("SPLIT", "     state = 3");
+                    //Log.d("SPLIT", "     state = 3");
 
                     // test for merge
                     if(state == 2)
@@ -692,7 +692,7 @@ class ContourMap
                 }
                 // case 4:
                 else {
-                    Log.d("SPLIT", "     state = 4");
+                    //Log.d("SPLIT", "     state = 4");
 
                     // add a new contour only if really a new start
                     if(state != 2) {
@@ -752,7 +752,7 @@ class ContourMap
             }
             sb.append("\n");
         }
-        Log.d("SPLITC", sb.toString());
+        //Log.d("SPLITC", sb.toString());
     }
 
     void draw(Bitmap material){

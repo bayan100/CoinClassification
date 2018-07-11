@@ -22,6 +22,12 @@ public class AGPOtsu extends AsyncGraphicsProcessor {
         processors.add(new GraphicsProcessor((new GData(bitmap)).asMat(), GraphicsProcessor.Task.ResizeImage));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.GrayScale));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.LocalOtsu));
+        //processors.add(new GraphicsProcessor(GraphicsProcessor.Task.ConvertToBitmap));
+
+        //processors.add(new GraphicsProcessor(GraphicsProcessor.Task.FindEllipse));
+        //processors.add(new GraphicsProcessor((new GData(bitmap)).asMat(), GraphicsProcessor.Task.ResizeImage));
+        //processors.add(new GraphicsProcessor(GraphicsProcessor.Task.DrawEllipse));
+        //processors.add(new GraphicsProcessor(GraphicsProcessor.Task.DrawContours));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.ConvertToBitmap));
 
         task = processors;
