@@ -75,4 +75,14 @@
         app:layout_constraintStart_toEndOf="@+id/button_save"
         app:layout_constraintTop_toBottomOf="@+id/button_canny" />
 
+    <Button
+        android:id="@+id/button_sift"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:text="SIFT"
+        app:layout_constraintStart_toEndOf="@+id/button_otsu"
+        app:layout_constraintTop_toBottomOf="@+id/button_contours" />
+
 </android.support.constraint.ConstraintLayout>

@@ -13,6 +13,8 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 
+import com.example.yannick.camera2test.Sqlite.DatabaseManager;
+
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
@@ -35,7 +37,13 @@ public class PictureDisplayActivity extends AppCompatActivity {
 
     private Bitmap bitmap;
 
-    private Button button_blur, button_canny, button_contours, button_ellipses, button_save, button_otsu;
+    private Button button_blur, button_canny, button_contours, button_ellipses, button_save, button_otsu, button_sift;
+
+    static {
+        if (!OpenCVLoader.initDebug()) {
+            Log.e("OpenCV", "Cannot load OpenCV library");
+        }
+    }
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -133,22 +141,56 @@ public class PictureDisplayActivity extends AppCompatActivity {
         button_otsu.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) { (new AGPOtsu(bitmap, progressBar, imageView)).execute(); }
         });
+        button_sift = findViewById(R.id.button_sift);
+        button_sift.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) { (new AGPSIFT(bitmap, progressBar, imageView)).execute(); }
+        });
+
 
         // Load the photo
         Intent intent = getIntent();
         String filepath = intent.getStringExtra("File");
 
+        Log.d("SQL", "pre1");
+
         try {
-            String testpath = "/sdcard/Pictures/Testpictures/otsutest.jpg";
+            //String testpath = "/sdcard/Pictures/Testpictures/otsutest.jpg";
+            String testpath = "/sdcard/Pictures/Testpictures/testset/ex00.jpg";
             bitmap = BitmapFactory.decodeFile(testpath);
 
             //bitmap = BitmapFactory.decodeStream(this.openFileInput(filepath));
             //bitmap = bitmap.copy( Bitmap.Config.ARGB_8888 , true);
 
+
+            Log.d("SQL", "pre2");
+
+            DatabaseManager dbm = new DatabaseManager(getApplicationContext());
+            dbm.open();
+
+            Mat image = new Mat();
+            Bitmap bmp32 = bitmap.copy(Bitmap.Config.ARGB_8888, true);
+            Utils.bitmapToMat(bmp32, image);
+            Log.d("SQL","Putting");
+            try {
+                dbm.putTest(image);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+
+            Mat mat = dbm.getTest();
+            bmp32 = Bitmap.createBitmap(mat.width(), mat.height(), Bitmap.Config.ARGB_8888);
+            Utils.matToBitmap(mat, bmp32);
+            bitmap = bmp32;
+
+            Log.d("SQL", "Getting");
+
+            dbm.close();
+
             Log.d("SUCCESS", "Loaded: " + filepath);
             imageView.setImageBitmap(bitmap);
         } catch (Exception e) {
             Log.d("ERROR", "Couldn't load: " + filepath);
+            e.printStackTrace();
         }
     }
 
@@ -158,7 +200,7 @@ public class PictureDisplayActivity extends AppCompatActivity {
         button_save.setEnabled(true);
         if (!OpenCVLoader.initDebug()) {
             Log.d("OpenCV", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
-            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION, this, mLoaderCallback);
         } else {
             Log.d("OpenCV", "OpenCV library found inside package. Using it!");
             mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);

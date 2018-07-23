@@ -9,10 +9,12 @@ import org.opencv.core.Point;
 import org.opencv.core.Range;
 import org.opencv.core.Rect;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.photo.Photo;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
 
 import static org.opencv.core.CvType.CV_32F;
 import static org.opencv.core.CvType.channels;
@@ -26,6 +28,7 @@ class LocalOtsuProcessor {
     private double savedThreshold = 128;
     private List<Point> points = new ArrayList<>();
 
+    private Point finishLine;
 
     enum Orientation{
         UNDEFINED,
@@ -86,18 +89,22 @@ class LocalOtsuProcessor {
 
     Mat run(){
 
+        double threshold = Imgproc.threshold(mat, mat, 0, 255, Imgproc.THRESH_OTSU);
+
         // TEST
-        Log.d("OTSU", "cols: " + mat.cols() + " rows: " + mat.rows());
-        for (int i = 0; i < 12; i++) {
+        /*Log.d("OTSU", "cols: " + mat.cols() + " rows: " + mat.rows());
+        for (int i = 0; i < 5; i++) {
+            Log.d("OTSUi", "i: " + i);
             Rect r = cutRect(mat);
             Mat aux = mat.colRange(r.y - r.height, r.y).rowRange(r.x, r.x + r.width);
+
             Mat otsu = otsuOnArea(cutBox(mat));
             otsu.copyTo(aux);
             //cutBox(mat).copyTo(aux);
         }
 
         // afterwards, add all the found contour points to the contour
-        contour.appendPoints(points);
+        contour.appendPoints(points);*/
 
         return mat;
     }
@@ -124,7 +131,7 @@ class LocalOtsuProcessor {
 
     private Mat otsuOnArea(Mat area) {
         Mat dest = new Mat();
-        double threshold = Imgproc.threshold(area, dest, 0, 255, Imgproc.THRESH_OTSU);
+        double threshold = Imgproc.threshold(area, dest, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
 
         // keep an threshold save to prevent some images from unrealistic thresholds
         if(threshold > 32 && threshold < 224)
@@ -132,10 +139,13 @@ class LocalOtsuProcessor {
         else
             // default on last 'good' value
             Imgproc.threshold(area, dest, savedThreshold, 255, Imgproc.THRESH_BINARY);
-        Log.d("OTSU", "threshold: " + threshold);
+        Log.d("OTSU", "threshold: " + threshold + ", sthresh: " + savedThreshold);
 
         int oldType = dest.type();
         dest.convertTo(dest, CV_32F);
+
+        // set a break clause
+        findModifiedFinishLine(dest);
 
         // now get the contour
         //dest = dest.t();
@@ -150,6 +160,7 @@ class LocalOtsuProcessor {
         start:
         while (true) {
             cc++;
+            Log.d("OTSU0","cc: " + cc);
 
             Point current = null, shift = null;
             switch (last) {
@@ -209,7 +220,7 @@ class LocalOtsuProcessor {
                         result[index] = 0;
                         colors[index] = 128;
 
-                        points.add(new Point(next.x + x0 - shift.x, -next.y + y0 - shift.y));
+                        points.add(new Point(-next.y + y0 - shift.y,next.x + x0 - shift.x));
 
                         // check if we reached a wall
                         if (points.size() > 1) {
@@ -242,6 +253,15 @@ class LocalOtsuProcessor {
                 // if we didn't find a way onward and are not on either side,
                 // trace back to a previous position from where we can start anew
                 if (previousIndices.size() > 0) {
+
+                    // check if were are close to a finish line
+                    if((finishLine.x > -1 && Math.abs(finishLine.x - current.x) < 4) || (finishLine.y > -1 && Math.abs(finishLine.y - current.y) < 4)){
+                        // stop the loop
+                        Log.d("OTSU","breaking!");
+                        //break start;
+                    }
+
+                    Log.d("OTSU", "backtracking");
                     Point previous = previousIndices.get(previousIndices.size() - 1);
                     previousIndices.remove(previousIndices.size() - 1);
                     colors[(int) ((previous.x + 1) * boxSize - previous.y - 1)] = 255;
@@ -258,21 +278,89 @@ class LocalOtsuProcessor {
         }
 
 
-        for (int i = 0; i < points.size(); i++) {
+        /*for (int i = 0; i < points.size(); i++) {
             Log.d("OTSU3", "p(" + i + "): " + points.get(i).toString());
-        }
+        }*/
 
         // append points to the big contour
 
         if(points.size() > 0) {
             endpoint = points.get(points.size() - 1);
-            x0 = (int) endpoint.x;
-            y0 = (int) endpoint.y;
+            x0 = (int) endpoint.y;
+            y0 = (int) endpoint.x;
         }
 
-        dest.put(0,0, colors);
+        //dest.put(0,0, colors);
         dest.convertTo(dest, oldType);
         return dest;
+    }
+
+    private void findModifiedFinishLine(Mat source){
+        //int oldType = source.type();
+        //source.convertTo(source, CV_32F);
+
+        // now according to direction scan the image for totally white/black areas
+        if(last == Orientation.LEFT || last == Orientation.RIGHT){
+            // get Vector to count
+            Mat yVec = new Mat();
+            Mat m = Mat.ones(boxSize, 1, source.type());
+            Core.gemm(source, m, 1/255., new Mat(), 0, yVec, 0);
+
+            float[] yVecD = new float[yVec.rows()];
+            yVec.get(0,0, yVecD);
+
+            // iterate the Vector
+            if(last == Orientation.LEFT) {
+                for (int i = 0; i < yVecD.length; i++) {
+                    //Log.d("OTSU4", "(" + i + "): " + yVecD[i]);
+                    if ((int)yVecD[i] < boxSize) {
+                        finishLine = new Point(i, -1);
+                        break;
+                    }
+                }
+            }
+            else {
+                for (int i = 0; i < yVecD.length; i++) {
+                    //Log.d("OTSU4", "(" + i + "): " + yVecD[i]);
+                    if ((int)yVecD[boxSize - i - 1] < boxSize) {
+                        finishLine = new Point(boxSize - i - 1, -1);
+                        break;
+                    }
+                }
+            }
+        }
+        else{
+            // get Vector to count
+            Mat yVec = new Mat();
+            Mat m = Mat.ones(boxSize, 1, source.type());
+            Core.gemm(source.t(), m, 1/255., new Mat(), 0, yVec, 0);
+
+            float[] yVecD = new float[yVec.rows()];
+            yVec.get(0,0, yVecD);
+
+            // iterate the Vector
+            if(last == Orientation.BOTTOM) {
+                for (int i = 0; i < yVecD.length; i++) {
+                    //Log.d("OTSU4", "(" + i + "): " + yVecD[i]);
+                    if ((int)yVecD[i] < boxSize) {
+                        finishLine = new Point(-1, i);
+                        break;
+                    }
+                }
+            }
+            else {
+                for (int i = 0; i < yVecD.length; i++) {
+                    //Log.d("OTSU4", "(" + i + "): " + yVecD[i]);
+                    if ((int)yVecD[boxSize - i - 1] < boxSize) {
+                        finishLine = new Point(-1, boxSize - i - 1);
+                        break;
+                    }
+                }
+            }
+        }
+
+        Log.d("OTSU4", "fline: " + finishLine);
+        //source.convertTo(source, oldType);
     }
 
     private Point tryAlternativesAlongBoxEdge(Point current, float[] colors, int xdir, int ydir){

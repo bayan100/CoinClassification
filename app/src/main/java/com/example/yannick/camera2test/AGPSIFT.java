@@ -6,29 +6,23 @@ import android.widget.ProgressBar;
 
 import java.util.ArrayList;
 
-public class AGPOtsu extends AsyncGraphicsProcessor {
-    public AGPOtsu(Bitmap bitmap, ProgressBar progressBar, ImageView imageView) {
+public class AGPSIFT extends AsyncGraphicsProcessor {
+    public AGPSIFT(Bitmap bitmap, ProgressBar progressBar, ImageView imageView) {
         super(new GraphicsProcessor(GraphicsProcessor.Task.DoNothing), progressBar, imageView);
 
         ArrayList<GraphicsProcessor> processors = new ArrayList<>();
         processors.add(new GraphicsProcessor((new GData(bitmap)).asMat(), GraphicsProcessor.Task.ResizeImage));
-
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.MedianBlur));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.EdgeDetection));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.FindContours));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.SplitContours));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.FilterContours));
+        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.FindEllipse));
 
         processors.add(new GraphicsProcessor((new GData(bitmap)).asMat(), GraphicsProcessor.Task.ResizeImage));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.GrayScale));
-        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.LocalOtsu));
+        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.SIFT));
         processors.add(new GraphicsProcessor(GraphicsProcessor.Task.ConvertToBitmap));
-
-        //processors.add(new GraphicsProcessor(GraphicsProcessor.Task.FindEllipse));
-        //processors.add(new GraphicsProcessor((new GData(bitmap)).asMat(), GraphicsProcessor.Task.ResizeImage));
-        //processors.add(new GraphicsProcessor(GraphicsProcessor.Task.DrawEllipse));
-        //processors.add(new GraphicsProcessor(GraphicsProcessor.Task.DrawContours));
-        //processors.add(new GraphicsProcessor(GraphicsProcessor.Task.ConvertToBitmap));
 
         task = processors;
     }

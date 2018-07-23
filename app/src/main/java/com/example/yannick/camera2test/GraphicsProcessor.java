@@ -52,6 +52,7 @@ public class GraphicsProcessor
         DrawEllipse,
         DrawContours,
 
+        SIFT,
         LocalOtsu,
 
         FindCorners,
@@ -147,6 +148,8 @@ public class GraphicsProcessor
             case FindEllipse: status = findEllipse(); break;
 
             case DrawEllipse: status = drawEllipse(); break;
+
+            case SIFT: status = sift(); break;
 
             case LocalOtsu: status = localOtsu(); break;
 
@@ -594,6 +597,14 @@ public class GraphicsProcessor
             return Status.PASSED;
         }
         return Status.FAILED;
+    }
+
+    private Status sift(){
+
+        SIFTProcessor sift = new SIFTProcessor(data.getMat(), ((ArrayList<RotatedRect>)additionalData).get(0));
+        data.setMat(sift.run());
+
+        return Status.PASSED;
     }
 
     private Status localOtsu(){
