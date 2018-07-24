@@ -4,25 +4,35 @@ import android.graphics.Bitmap;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 
+import com.example.yannick.camera2test.Sqlite.DatabaseManager;
+
+import org.opencv.xfeatures2d.SIFT;
+
 import java.util.ArrayList;
 
 public class AGPSIFT extends AsyncGraphicsProcessor {
-    public AGPSIFT(Bitmap bitmap, ProgressBar progressBar, ImageView imageView) {
-        super(new GraphicsProcessor(GraphicsProcessor.Task.DoNothing), progressBar, imageView);
+    public AGPSIFT(Bitmap bitmap, ProgressBar progressBar, ImageView imageView, DatabaseManager dbm) {
+        super(new GraphicsProcessor("DoNothing"), progressBar, imageView, dbm);
 
         ArrayList<GraphicsProcessor> processors = new ArrayList<>();
-        processors.add(new GraphicsProcessor((new GData(bitmap)).asMat(), GraphicsProcessor.Task.ResizeImage));
-        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.MedianBlur));
-        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.EdgeDetection));
-        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.FindContours));
-        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.SplitContours));
-        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.FilterContours));
-        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.FindEllipse));
+        processors.add(new GraphicsProcessor((new GData(bitmap)).asMat(), "ResizeImage"));
+        processors.add(new GraphicsProcessor("MedianBlur"));
+        processors.add(new GraphicsProcessor("EdgeDetection"));
+        processors.add(new GraphicsProcessor("FindContours"));
+        processors.add(new GraphicsProcessor("SplitContours"));
+        processors.add(new GraphicsProcessor("FilterContours"));
+        processors.add(new GraphicsProcessor("FindEllipse"));
 
-        processors.add(new GraphicsProcessor((new GData(bitmap)).asMat(), GraphicsProcessor.Task.ResizeImage));
-        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.GrayScale));
-        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.SIFT));
-        processors.add(new GraphicsProcessor(GraphicsProcessor.Task.ConvertToBitmap));
+        processors.add(new GraphicsProcessor((new GData(bitmap)).asMat(), "ResizeImage"));
+        processors.add(new GraphicsProcessor("GrayScale"));
+        /*SIFTProcessor p = new SIFTProcessor("GenerateSIFT");
+        p.addAdditionaData("images", new String[]{
+                "Germany_0.jpg",
+                "Germany_1.jpg",
+                "Germany_2.jpg"});
+        processors.add(p);*/
+        processors.add(new SIFTProcessor("SIFT"));
+        processors.add(new GraphicsProcessor("ConvertToBitmap"));
 
         task = processors;
     }

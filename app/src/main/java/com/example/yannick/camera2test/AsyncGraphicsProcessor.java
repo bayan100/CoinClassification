@@ -5,6 +5,8 @@ import android.util.Log;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 
+import com.example.yannick.camera2test.Sqlite.DatabaseManager;
+
 import java.util.ArrayList;
 import java.util.PropertyResourceBundle;
 
@@ -13,22 +15,25 @@ public class AsyncGraphicsProcessor extends AsyncTask<Integer, Integer, Integer>
     ArrayList<GraphicsProcessor> task;
     ProgressBar progressBar;
     ImageView imageView;
+    DatabaseManager dbm;
 
     // For a single task
-    public AsyncGraphicsProcessor(GraphicsProcessor task, ProgressBar progressBar, ImageView imageView) {
+    public AsyncGraphicsProcessor(GraphicsProcessor task, ProgressBar progressBar, ImageView imageView, DatabaseManager dbm) {
         this.task = new ArrayList<GraphicsProcessor>();
         this.task.add(task);
 
         this.progressBar = progressBar;
         this.imageView = imageView;
+        this.dbm = dbm;
     }
 
     // chain multiple tasks
-    public AsyncGraphicsProcessor(ArrayList<GraphicsProcessor> tasks, ProgressBar progressBar, ImageView imageView) {
+    public AsyncGraphicsProcessor(ArrayList<GraphicsProcessor> tasks, ProgressBar progressBar, ImageView imageView, DatabaseManager dbm) {
         this.task = tasks;
 
         this.progressBar = progressBar;
         this.imageView = imageView;
+        this.dbm = dbm;
     }
 
     @Override
@@ -36,6 +41,7 @@ public class AsyncGraphicsProcessor extends AsyncTask<Integer, Integer, Integer>
     {
         // run the computational tasks
         for(int i = 0; i < task.size(); i++) {
+            task.get(i).passDBM(dbm);
             GraphicsProcessor.Status status = task.get(i).execute();
 
             // update progress

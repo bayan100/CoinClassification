@@ -35,6 +35,8 @@ public class PictureDisplayActivity extends AppCompatActivity {
     private ImageView imageView;
     private ProgressBar progressBar;
 
+    private DatabaseManager dbm;
+
     private Bitmap bitmap;
 
     private Button button_blur, button_canny, button_contours, button_ellipses, button_save, button_otsu, button_sift;
@@ -73,7 +75,7 @@ public class PictureDisplayActivity extends AppCompatActivity {
                     //GraphicsProcessor.parameter.put("EDthreshold1", 30f);
                     //GraphicsProcessor.parameter.put("EDthreshold2", 100f);
 
-                    (new AGPFindEllipses(bitmap, progressBar, imageView)).execute();
+                    (new AGPFindEllipses(bitmap, progressBar, imageView, dbm)).execute();
 
                 }
                 break;
@@ -93,22 +95,26 @@ public class PictureDisplayActivity extends AppCompatActivity {
         imageView = findViewById(R.id.image_view);
         progressBar = findViewById(R.id.pBar);
 
+        // load database
+        dbm = new DatabaseManager(getApplicationContext());
+        dbm.open();
+
         // Init the debug Buttons
         button_blur = findViewById(R.id.button_blur);
         button_blur.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { (new AGPBlur(bitmap, progressBar, imageView)).execute(); }
+            public void onClick(View v) { (new AGPBlur(bitmap, progressBar, imageView, dbm)).execute(); }
         });
         button_canny = findViewById(R.id.button_canny);
         button_canny.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { (new AGPCannyEdge(bitmap, progressBar, imageView)).execute(); }
+            public void onClick(View v) { (new AGPCannyEdge(bitmap, progressBar, imageView, dbm)).execute(); }
         });
         button_contours = findViewById(R.id.button_contours);
         button_contours.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { (new AGPContours(bitmap, progressBar, imageView)).execute(); }
+            public void onClick(View v) { (new AGPContours(bitmap, progressBar, imageView, dbm)).execute(); }
         });
         button_ellipses = findViewById(R.id.button_ellipses);
         button_ellipses.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { (new AGPFindEllipses(bitmap, progressBar, imageView)).execute(); }
+            public void onClick(View v) { (new AGPFindEllipses(bitmap, progressBar, imageView, dbm)).execute(); }
         });
         button_save = findViewById(R.id.button_save);
         button_save.setOnClickListener(new View.OnClickListener() {
@@ -139,19 +145,17 @@ public class PictureDisplayActivity extends AppCompatActivity {
         });
         button_otsu = findViewById(R.id.button_otsu);
         button_otsu.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { (new AGPOtsu(bitmap, progressBar, imageView)).execute(); }
+            public void onClick(View v) { (new AGPOtsu(bitmap, progressBar, imageView, dbm)).execute(); }
         });
         button_sift = findViewById(R.id.button_sift);
         button_sift.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { (new AGPSIFT(bitmap, progressBar, imageView)).execute(); }
+            public void onClick(View v) { (new AGPSIFT(bitmap, progressBar, imageView, dbm)).execute(); }
         });
 
 
         // Load the photo
         Intent intent = getIntent();
         String filepath = intent.getStringExtra("File");
-
-        Log.d("SQL", "pre1");
 
         try {
             //String testpath = "/sdcard/Pictures/Testpictures/otsutest.jpg";
@@ -160,31 +164,6 @@ public class PictureDisplayActivity extends AppCompatActivity {
 
             //bitmap = BitmapFactory.decodeStream(this.openFileInput(filepath));
             //bitmap = bitmap.copy( Bitmap.Config.ARGB_8888 , true);
-
-
-            Log.d("SQL", "pre2");
-
-            DatabaseManager dbm = new DatabaseManager(getApplicationContext());
-            dbm.open();
-
-            Mat image = new Mat();
-            Bitmap bmp32 = bitmap.copy(Bitmap.Config.ARGB_8888, true);
-            Utils.bitmapToMat(bmp32, image);
-            Log.d("SQL","Putting");
-            try {
-                dbm.putTest(image);
-            }catch (Exception e){
-                e.printStackTrace();
-            }
-
-            Mat mat = dbm.getTest();
-            bmp32 = Bitmap.createBitmap(mat.width(), mat.height(), Bitmap.Config.ARGB_8888);
-            Utils.matToBitmap(mat, bmp32);
-            bitmap = bmp32;
-
-            Log.d("SQL", "Getting");
-
-            dbm.close();
 
             Log.d("SUCCESS", "Loaded: " + filepath);
             imageView.setImageBitmap(bitmap);
@@ -205,5 +184,13 @@ public class PictureDisplayActivity extends AppCompatActivity {
             Log.d("OpenCV", "OpenCV library found inside package. Using it!");
             mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        // close database connection
+        dbm.close();
     }
 }

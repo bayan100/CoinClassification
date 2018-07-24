@@ -7,12 +7,16 @@ import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfKeyPoint;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Dictionary;
+import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Map;
 
 public class DatabaseManager {
 
@@ -42,6 +46,7 @@ public class DatabaseManager {
         }
     }
 
+    /*
     public void putTest(Mat test){
         ContentValues values = new ContentValues();
         values.put("Type", "TestMat");
@@ -60,7 +65,30 @@ public class DatabaseManager {
         cursor.moveToFirst();
         byte[] bytes = cursor.getBlob(0);
         cursor.close();
+
+        database.delete("Feature", "Type = ?", new String[]{"TestMat"});
+
         return fromDBBytes(bytes);
+    }*/
+
+    public Map<String, CoinData[]> getCoins(){
+        Map<String, CoinData[]> data = new HashMap<>();
+
+        String sql = "SELECT Name, Value FROM Coin, Country WHERE Coin.Country_id = Country.id;";
+        Cursor cursor = database.rawQuery(sql, null);
+        cursor.moveToFirst();
+        while (!cursor.isAfterLast()) {
+            String country = cursor.getString(0);
+            int value = cursor.getInt(1);
+
+            if(!data.containsKey(country)){
+                data.put(country, new CoinData[3]);
+            }
+            data.get(country)[value] = new CoinData(value, country);
+            cursor.moveToNext();
+        }
+        cursor.close();
+        return data;
     }
 
     public void putFeatures(List<FeatureData> featureData, CoinData coin){
@@ -79,70 +107,93 @@ public class DatabaseManager {
             ContentValues values = new ContentValues();
             values.put("Type", feature.type);
             values.put("Coin_id", coinId);
-            values.put("Keypoints", toDBBytes(feature.keypoints));
-            values.put("Descriptor", toDBBytes(feature.descriptor));
-            values.put("Mask", toDBBytes(feature.mask));
+            values.put("Keypoints", MatSerializer.matToBytes(feature.keypoints));
+            values.put("Descriptor", MatSerializer.matToBytes(feature.descriptor));
+            values.put("Mask", MatSerializer.matToBytes(feature.mask));
             database.insert("Feature", null, values);
         }
     }
 
-    public Dictionary<String, List<FeatureData>> getFeaturesByType(String type){
-        Dictionary<String, List<FeatureData>> data = new Hashtable<>();
+    public void putFeature(FeatureData feature, CoinData coin) {
+        // find the id corresponding to the coin
+        String sql = "SELECT Coin.id FROM Coin, Country WHERE " +
+                "Coin.Country_id = Country.id AND " +
+                "Country.Name = '" + coin.country + "' AND " +
+                "Coin.Value = " + coin.value + ";";
+        Cursor cursor = database.rawQuery(sql, null);
+        cursor.moveToFirst();
+        int coinId = cursor.getInt(0);
+        cursor.close();
 
-        String sql = "SELECT * FROM Feature WHERE Type = '" + type + "';";
+        // put the feature data into the database
+        ContentValues values = new ContentValues();
+        values.put("Type", feature.type);
+        values.put("Coin_id", coinId);
+        values.put("Keypoints", MatSerializer.matToBytes(feature.keypoints));
+        values.put("Descriptor", MatSerializer.matToBytes(feature.descriptor));
+        values.put("Mask", MatSerializer.matToBytes(feature.mask));
+        database.insert("Feature", null, values);
+
+    }
+
+    public Map<CoinData, FeatureData> getFeaturesByType(String type){
+        Map<CoinData, FeatureData> data = new HashMap<>();
+
+        String sql = "SELECT Country.Name, Coin.Value, Feature.Keypoints, Feature.Descriptor, Feature.Mask " +
+                "FROM Feature, Coin, Country WHERE " +
+                "Feature.Coin_id = Coin.id AND " +
+                "Coin.Country_id = Country.id AND " +
+                "Type = '" + type + "';";
         Cursor cursor = database.rawQuery(sql, null);
         cursor.moveToFirst();
         while (!cursor.isAfterLast()) {
             FeatureData feature = new FeatureData(type);
+            feature.keypoints = new MatOfKeyPoint(MatSerializer.matFromBytes(cursor.getBlob(2)));
+            feature.descriptor = MatSerializer.matFromBytes(cursor.getBlob(3));
+            feature.mask = MatSerializer.matFromBytes(cursor.getBlob(4));
+            CoinData coinData = new CoinData(cursor.getInt(1), cursor.getString(0));
 
+            data.put(coinData, feature);
+            cursor.moveToNext();
         }
         cursor.close();
 
         return data;
     }
 
-    private Mat fromDBBytes(byte[] data){
-        // first 12 bytes are for storing type, width and height of the mat
-        int type   = fromByte(data, 0);
-        int width  = fromByte(data, 4);
-        int heigth = fromByte(data, 8);
+    public void putCoin(CoinData coinData){
+        // find the id corresponding to the coin
+        String sql = "SELECT Country.id FROM Country WHERE " +
+                "Country.Name = '" + coinData.country + "';";
+        Cursor cursor = database.rawQuery(sql, null);
+        cursor.moveToFirst();
+        int countryId = cursor.getInt(0);
+        cursor.close();
 
-        Log.d("SQL", type + ", " + width + ", "+ heigth);
-
-        Mat mat = new Mat(width, heigth, type);
-        mat.put(0,0, Arrays.copyOfRange(data, 12, data.length));
-        return mat;
+        // put the feature data into the database
+        ContentValues values = new ContentValues();
+        values.put("Country_id", countryId);
+        values.put("Value", coinData.value);
+        database.insert("Coin", null, values);
     }
 
-    private byte[] toDBBytes(Mat data){
-        // first 12 bytes are for storing type, width and height of the mat
-        byte[] desc = new byte[12];
-        fromInteger(desc, 0, data.type());
-        fromInteger(desc, 4, data.rows());
-        fromInteger(desc, 8, data.cols());
+    public List<String> getCountrys(){
+        List<String> data = new ArrayList<>();
 
-        int nbytes = (int)(data.total() * data.elemSize());
-        byte[] bytes = new byte[ (int)nbytes ];
-        data.get(0, 0,bytes);
+        String sql = "SELECT Name FROM Country ;";
+        Cursor cursor = database.rawQuery(sql, null);
+        cursor.moveToFirst();
+        while (!cursor.isAfterLast()) {
+            data.add(cursor.getString(0));
+            cursor.moveToNext();
+        }
+        cursor.close();
 
-        // concatenate both arrays
-        byte[] total = new byte[nbytes + 12];
-        System.arraycopy(desc, 0, total, 0, desc.length);
-        System.arraycopy(bytes, 0, total, 12, nbytes);
-        return total;
+        return data;
     }
-
-    private int fromByte(byte[] bytes, int start){
-        return  (bytes[start    ]<<24)&0xff000000|
-                (bytes[start + 1]<<16)&0x00ff0000|
-                (bytes[start + 2]<< 8)&0x0000ff00|
-                (bytes[start + 3]    )&0x000000ff;
-    }
-
-    private void fromInteger(byte[] bytes, int start, int value) {
-        bytes[start    ] = (byte)(value >>> 24);
-        bytes[start + 1] = (byte)(value >>> 16);
-        bytes[start + 2] = (byte)(value >>> 8);
-        bytes[start + 3] = (byte)value;
+    public void putCountry(String country){
+        ContentValues values = new ContentValues();
+        values.put("Name", country);
+        database.insert("Country", null, values);
     }
 }

@@ -5,7 +5,11 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.util.Log;
 
+import com.example.yannick.camera2test.Sqlite.CoinData;
+import com.example.yannick.camera2test.Sqlite.FeatureData;
+
 import org.opencv.android.Utils;
+import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.DMatch;
 import org.opencv.core.Mat;
@@ -23,14 +27,104 @@ import org.opencv.xfeatures2d.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
-public class SIFTProcessor {
+public class SIFTProcessor extends GraphicsProcessor {
     private Mat data;
     private RotatedRect ellipse;
 
-    public SIFTProcessor(Mat source, RotatedRect ellipse){
-        this.data = source;
-        this.ellipse = ellipse;
+    public SIFTProcessor(String task){
+        super(task);
+    }
+
+    @Override
+    public Status execute() {
+        // start Timer
+        long starttime = System.nanoTime();
+
+        switch (task){
+            case "SIFT":
+                break;
+
+            case "GenerateSIFT":
+                String[] files = (String[])additionalData.get("images");
+                generateSIFTBunch(files);
+                break;
+        }
+
+        // timer stop
+        Log.d("TIMER", "Task " + task + " completed in: " + ((System.nanoTime() - starttime) / 1000000) + " ms");
+        return Status.PASSED;
+    }
+
+    private Mat loadGrayImage(String name){
+        String testpath = "/sdcard/Pictures/Testpictures/trainset/" + name;
+        Bitmap bitmap = BitmapFactory.decodeFile(testpath);
+
+        Mat data = new Mat();
+        Bitmap bmp32 = bitmap.copy(Bitmap.Config.ARGB_8888, true);
+        Utils.bitmapToMat(bmp32, data);
+        Imgproc.cvtColor(data, data, Imgproc.COLOR_RGB2GRAY);
+        return data;
+    }
+    
+    private void generateSIFTBunch(String[] files){
+        // gather the countrys
+        List<String> countrys = dbm.getCountrys();
+        Map<String, CoinData[]> coins = dbm.getCoins();
+
+        // generate SIFT-Features for all given Coin-Files
+        for (int i = 0; i < files.length; i++) {
+            Mat file = loadGrayImage(files[i]);
+            FeatureData feature = generateSIFTFeatures(file);
+
+            // read the Country and Coin-type from the filename
+            Log.d("SIFT", files[i]);
+            String[] tmp = files[i].split("_");
+            String country = tmp[0];
+            int value = Integer.parseInt(tmp[1].substring(0, tmp[1].indexOf(".")));
+
+            // if country not already there, add it
+            if(!countrys.contains(country)){
+                countrys.add(country);
+                coins.put(country, new CoinData[3]);
+                dbm.putCountry(country);
+            }
+            // if coin not there add as well
+            if(coins.get(country) == null || coins.get(country)[value] == null){
+                dbm.putCoin(new CoinData(value, country));
+            }
+
+            // save to database
+            dbm.putFeature(feature, new CoinData(value, country));
+        }
+    }
+
+    private FeatureData generateSIFTFeatures(Mat data, RotatedRect ellipse){
+        Mat mask = Mat.zeros(data.size(), data.type());
+        Imgproc.ellipse(mask, ellipse, new Scalar(255,255,255), -1);
+
+        MatOfKeyPoint keypoints = new MatOfKeyPoint();
+        Mat descriptors = new Mat();
+        SIFT detector = SIFT.create();
+        detector.detectAndCompute(data, mask, keypoints, descriptors);
+
+        return new FeatureData("SIFT", keypoints, descriptors, mask);
+    }
+
+    private FeatureData generateSIFTFeatures(Mat data){
+        return generateSIFTFeatures(data, new RotatedRect(new Point(data.size().width / 2, data.size().height / 2), data.size(), 0));
+    }
+
+    private double match(FeatureData input, FeatureData feature, DescriptorMatcher matcher){
+        MatOfDMatch match = new MatOfDMatch();
+        matcher.match(input.descriptor, feature.descriptor, match);
+
+        Calib3d.findHomography()
+        return 0;
+    }
+    private double matchKnn(FeatureData input, FeatureData feature, DescriptorMatcher matcher, boolean thresholding){
+
     }
 
     public Mat run2(){
@@ -97,6 +191,8 @@ public class SIFTProcessor {
         MatOfDMatch match = new MatOfDMatch();
 
         matcher.match(descriptors, descriptors2, match);
+
+
 
         //-- Filter matches using the Lowe's ratio test
        /* float ratioThresh = 0.87f;

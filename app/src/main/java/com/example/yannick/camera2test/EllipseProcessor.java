@@ -20,7 +20,7 @@ public class EllipseProcessor extends GraphicsProcessor {
 
     public ArrayList<Ellipse> sortedResults;
 
-    public EllipseProcessor(Task task)
+    public EllipseProcessor(String task)
     {
         super(task);
 
@@ -42,7 +42,7 @@ public class EllipseProcessor extends GraphicsProcessor {
 
         // switch task
         switch (task) {
-            case FindEllipse:
+            case "FindEllipse":
                 // test the GData-Type
                 if (data.type != GData.Type.BOOLEANMAP)
                     return Status.FAILED;
@@ -57,13 +57,13 @@ public class EllipseProcessor extends GraphicsProcessor {
                 runDetection2();
                 break;
 
-            case DrawEllipse:
+            case "DrawEllipse":
                 drawEllipse();
                 break;
         }
 
         // timer stop
-        Log.d("TIMER", "Task " + task.toString() + " completed in: " + ((System.nanoTime() - starttime) / 1000000) + " ms");
+        Log.d("TIMER", "Task " + task + " completed in: " + ((System.nanoTime() - starttime) / 1000000) + " ms");
 
         return Status.PASSED;
     }
@@ -205,6 +205,7 @@ public class EllipseProcessor extends GraphicsProcessor {
         // Sort by votes and thus likelihood
         Collections.sort(possibleResults);
         sortedResults = possibleResults;
+        additionalData.put("ellipses", sortedResults);
 
         for (int i = 0; i < possibleResults.size(); i++) {
             Log.d("ELLIPSE", possibleResults.get(i).toString());
@@ -357,6 +358,7 @@ public class EllipseProcessor extends GraphicsProcessor {
         // Sort by votes and thus likelihood
         Collections.sort(possibleResults);
         sortedResults = possibleResults;
+        additionalData.put("ellipses", sortedResults);
 
         for (int i = 0; i < possibleResults.size(); i++) {
             Log.d("ELLIPSE", possibleResults.get(i).toString());
@@ -422,17 +424,6 @@ public class EllipseProcessor extends GraphicsProcessor {
             }
         }
         results.add(item);
-    }
-
-    @Override
-    public Object getAdditionalData() {
-        return sortedResults;
-    }
-
-    @Override
-    public void passAdditionalData(Object item) {
-        if(item != null)
-            sortedResults = (ArrayList<Ellipse>)item;
     }
 
     private Status drawEllipse()

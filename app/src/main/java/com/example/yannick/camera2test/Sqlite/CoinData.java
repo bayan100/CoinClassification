@@ -1,7 +1,7 @@
 package com.example.yannick.camera2test.Sqlite;
 
 public class CoinData {
-    // Value 0 = 2 Euro, 1 = 1 Euro, 2 = Golden Coins, 3 = Copper Coins
+    // Value 0 = 2 Euro, 1 = Golden Coins, 2 = Copper Coins
     public int value;
     public String country;
 

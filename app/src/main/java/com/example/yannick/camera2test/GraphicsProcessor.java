@@ -4,6 +4,8 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.util.Log;
 
+import com.example.yannick.camera2test.Sqlite.DatabaseManager;
+
 import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
@@ -19,6 +21,7 @@ import org.opencv.imgproc.Imgproc;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +31,8 @@ import static org.opencv.core.CvType.CV_8UC3;
 public class GraphicsProcessor
 {
     protected GData data;
-    protected Object additionalData;
+    protected Map<String, Object> additionalData;
+    protected DatabaseManager dbm;
 
     public enum Status
     {
@@ -37,45 +41,20 @@ public class GraphicsProcessor
         FAILED
     }
 
-    Task task;
-    public enum Task
-    {
-        UNDEFINED,
-        GrayScale,
-        MedianBlur,
+    String task;
+    static Map<String, Float> parameter = new HashMap<String, Float>();
 
-        EdgeDetection,
-        FindContours,
-        FindEllipse,
-        SplitContours,
-        FilterContours,
-        DrawEllipse,
-        DrawContours,
-
-        SIFT,
-        LocalOtsu,
-
-        FindCorners,
-
-        ResizeImage,
-        ConvertToMat,
-        ConvertToBooleanmap,
-        ConvertToBitmap,
-
-        DoNothing
-    }
-
-    public static Map<String, Float> parameter = new HashMap<String, Float>();
-
-    public GraphicsProcessor(GData data, Task task)
+    public GraphicsProcessor(GData data, String task)
     {
         this.data = data;
         this.task = task;
+        this.additionalData = new HashMap<>();
     }
 
-    public GraphicsProcessor(Task task)
+    public GraphicsProcessor(String task)
     {
         this.task = task;
+        this.additionalData = new HashMap<>();
     }
 
     public static void initParameters()
@@ -114,12 +93,23 @@ public class GraphicsProcessor
         return data;
     }
 
-    public void passAdditionalData(Object item) {
-        additionalData = item;
+    public void passAdditionalData(Map<String, Object> additionalData) {
+        if(this.additionalData == null)
+            this.additionalData = additionalData;
+        else
+            this.additionalData.putAll(additionalData);
     }
 
-    public Object getAdditionalData() {
+    public Map<String, Object> getAdditionalData() {
         return additionalData;
+    }
+
+    public void addAdditionaData(String key, Object value){
+        additionalData.put(key, value);
+    }
+
+    public void passDBM(DatabaseManager dbm) {
+        this.dbm = dbm;
     }
 
     public Status execute()
@@ -131,43 +121,39 @@ public class GraphicsProcessor
         Status status;
         switch (task)
         {
-            case EdgeDetection: status = edgeDetection(); break;
+            case "EdgeDetection": status = edgeDetection(); break;
 
-            case GrayScale: status = convertGreyscale(); break;
+            case "GrayScale": status = convertGreyscale(); break;
 
-            case MedianBlur: status = medianblur(); break;
+            case "MedianBlur": status = medianblur(); break;
 
-            case FindContours: status = findContoures(); break;
+            case "FindContours": status = findContoures(); break;
 
-            case SplitContours: status = splitContours(); break;
+            case "SplitContours": status = splitContours(); break;
 
-            case FilterContours: status = filterContours(); break;
+            case "FilterContours": status = filterContours(); break;
 
-            case DrawContours: status = drawContours(); break;
+            case "DrawContours": status = drawContours(); break;
 
-            case FindEllipse: status = findEllipse(); break;
+            case "FindEllipse": status = findEllipse(); break;
 
-            case DrawEllipse: status = drawEllipse(); break;
+            case "DrawEllipse": status = drawEllipse(); break;
 
-            case SIFT: status = sift(); break;
+            case "LocalOtsu": status = localOtsu(); break;
 
-            case LocalOtsu: status = localOtsu(); break;
+            case "ResizeImage": status = resizeImage(); break;
 
-            case ResizeImage: status = resizeImage(); break;
+            case "ConvertToBitmap": status = convertToBitmap(); break;
 
-            case FindCorners: status = findCorners(); break;
+            case "ConvertToBooleanmap": status = convertToBooleanmap();  break;
 
-            case ConvertToBitmap: status = convertToBitmap(); break;
-
-            case ConvertToBooleanmap: status = convertToBooleanmap();  break;
-
-            case DoNothing: status = Status.PASSED; break;
+            case "DoNothing": status = Status.PASSED; break;
 
             default: return Status.FAILED;
         }
 
         // timer stop
-        Log.d("TIMER", "Task " + task.toString() + " completed in: " + ((System.nanoTime() - starttime) / 1000000) + " ms");
+        Log.d("TIMER", "Task " + task + " completed in: " + ((System.nanoTime() - starttime) / 1000000) + " ms");
 
         return status;
     }
@@ -262,7 +248,7 @@ public class GraphicsProcessor
             // sort by maximum area DESC order
             Collections.sort(contours);
 
-            additionalData = contours;
+            additionalData.put("contours", contours);
             return Status.PASSED;
         }
         return Status.FAILED;
@@ -270,7 +256,7 @@ public class GraphicsProcessor
 
     private Status filterContours(){
         if(additionalData != null) {
-            ArrayList<Contour> contours = (ArrayList<Contour>)additionalData;
+            ArrayList<Contour> contours = (ArrayList<Contour>)additionalData.get("contours");
 
             // calculate the area under the contour with accurate trapeze shape
             int nBasePoints = Math.round(parameter.get("FnBasePoints"));
@@ -363,7 +349,7 @@ public class GraphicsProcessor
     private Status splitContours()
     {
         if(additionalData != null) {
-            ArrayList<Contour> contours = (ArrayList<Contour>)additionalData;
+            ArrayList<Contour> contours = (ArrayList<Contour>)additionalData.get("contours");
             int minArea = Math.round(parameter.get("FEminArea"));
 
             // try to split each contour
@@ -414,7 +400,7 @@ public class GraphicsProcessor
     {
         if(data.type == GData.Type.MAT && additionalData != null)
         {
-            ArrayList<Contour> contours = (ArrayList<Contour>)additionalData;
+            ArrayList<Contour> contours = (ArrayList<Contour>)additionalData.get("contours");
             Mat target = data.getMat();
 
             Mat contoursMat = Mat.zeros(target.rows(), target.cols(), CV_8UC3);
@@ -523,7 +509,7 @@ public class GraphicsProcessor
     {
         if(additionalData != null)
         {
-            ArrayList<Contour> contours = (ArrayList<Contour>)additionalData;
+            ArrayList<Contour> contours = (ArrayList<Contour>)additionalData.get("contours");
             ArrayList<RotatedRect> ellipses = new ArrayList<>(contours.size());
 
             for (int i = 0; i < contours.size(); i++) {
@@ -575,7 +561,7 @@ public class GraphicsProcessor
                 }
             }*/
 
-            additionalData = ellipses;
+            additionalData.put("ellipses", ellipses);
             return Status.PASSED;
         }
         return Status.FAILED;
@@ -586,7 +572,7 @@ public class GraphicsProcessor
         if (data.type == GData.Type.MAT && additionalData != null)
         {
             Mat image = data.getMat();
-            ArrayList<RotatedRect> ellipses = (ArrayList<RotatedRect>)additionalData;
+            ArrayList<RotatedRect> ellipses = (ArrayList<RotatedRect>)additionalData.get("ellipses");
             for (int i = 0; i < 1 && i < ellipses.size(); i++) {
                 Imgproc.ellipse(image, ellipses.get(i), new Scalar(255, 0, 0), 2);
             }
@@ -599,21 +585,13 @@ public class GraphicsProcessor
         return Status.FAILED;
     }
 
-    private Status sift(){
-
-        SIFTProcessor sift = new SIFTProcessor(data.getMat(), ((ArrayList<RotatedRect>)additionalData).get(0));
-        data.setMat(sift.run());
-
-        return Status.PASSED;
-    }
-
     private Status localOtsu(){
         Mat source = data.getMat();
-        Contour c = ((ArrayList<Contour>)additionalData).get(0);
+        Contour c = ((ArrayList<Contour>)additionalData.get("contours")).get(0);
         Log.d("OTSU", "size: " + c.points.length);
-        LocalOtsuProcessor processor = new LocalOtsuProcessor(source, ((ArrayList<Contour>)additionalData).get(0), 16);
+        LocalOtsuProcessor processor = new LocalOtsuProcessor(source, ((ArrayList<Contour>)additionalData.get("contours")).get(0), 16);
         data.setMat(processor.run());
-        ((ArrayList<Contour>)additionalData).set(0, processor.contour);
+        ((ArrayList<Contour>)additionalData.get("contours")).set(0, processor.contour);
 
         return Status.PASSED;
 
