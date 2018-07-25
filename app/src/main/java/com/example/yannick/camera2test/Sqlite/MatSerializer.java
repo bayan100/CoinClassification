@@ -6,6 +6,9 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 
 import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.util.Arrays;
 
 public class MatSerializer {
@@ -72,28 +75,32 @@ public class MatSerializer {
         int cols = fromByte(bytes, 8);
 
         Mat mat = new Mat(rows, cols, type);
-        mat.put(0,0, Arrays.copyOfRange(bytes, 12, bytes.length));
-/*
+        ByteBuffer buffer = ByteBuffer.wrap(Arrays.copyOfRange(bytes, 12, bytes.length));
+
         if( type == CvType.CV_32S || type == CvType.CV_32SC2 || type == CvType.CV_32SC3 || type == CvType.CV_16S) {
-            int[] data = SerializationUtils.toIntArray(Base64.decodeBase64(dataString.getBytes()));
+            IntBuffer ib = buffer.asIntBuffer();
+            int[] data = new int[ib.limit()];
+            ib.get(data);
             mat.put(0, 0, data);
         }
-        else if( type == CvType.CV_32F || type == CvType.CV_32FC2) {
-            float[] data = SerializationUtils.toFloatArray(Base64.decodeBase64(dataString.getBytes()));
-            mat.put(0, 0, data);
+        else if( type == CvType.CV_32F || type == CvType.CV_32FC2 || type == 53) {
+            FloatBuffer fb = buffer.asFloatBuffer();
+            float[] floatArray = new float[fb.limit()];
+            fb.get(floatArray);
+            mat.put(0,0, floatArray);
         }
         else if( type == CvType.CV_64F || type == CvType.CV_64FC2) {
-            double[] data = SerializationUtils.toDoubleArray(Base64.decodeBase64(dataString.getBytes()));
-            mat.put(0, 0, data);
+            DoubleBuffer db = buffer.asDoubleBuffer();
+            double[] data = new double[db.limit()];
+            db.get(data);
+            mat.put(0,0, data);
         }
         else if( type == CvType.CV_8U ) {
-            byte[] data = Base64.decodeBase64(dataString.getBytes());
-            mat.put(0, 0, data);
+            mat.put(0, 0, Arrays.copyOfRange(bytes, 12, bytes.length));
         }
         else {
-
             throw new UnsupportedOperationException("unknown type");
-        }*/
+        }
         return mat;
     }
 

@@ -146,7 +146,13 @@ public class DatabaseManager {
                 "Type = '" + type + "';";
         Cursor cursor = database.rawQuery(sql, null);
         cursor.moveToFirst();
-        while (!cursor.isAfterLast()) {
+        int c = 0;
+        while (!cursor.isAfterLast() &&  c < 10) {
+
+            //Log.d("SQL", "pos: " + cursor.getPosition());
+
+            //Log.d("SQL", cursor.getColumnNames()[0] + ": " + cursor.getColumnIndex(cursor.getColumnNames()[0]));
+
             FeatureData feature = new FeatureData(type);
             feature.keypoints = new MatOfKeyPoint(MatSerializer.matFromBytes(cursor.getBlob(2)));
             feature.descriptor = MatSerializer.matFromBytes(cursor.getBlob(3));
@@ -154,6 +160,7 @@ public class DatabaseManager {
             CoinData coinData = new CoinData(cursor.getInt(1), cursor.getString(0));
 
             data.put(coinData, feature);
+            c++;
             cursor.moveToNext();
         }
         cursor.close();

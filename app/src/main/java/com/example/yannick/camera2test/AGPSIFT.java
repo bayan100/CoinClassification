@@ -23,10 +23,10 @@ public class AGPSIFT extends AsyncGraphicsProcessor {
         processors.add(new GraphicsProcessor("FilterContours"));
         processors.add(new GraphicsProcessor("FindEllipse"));
 
-        processors.add(new GraphicsProcessor((new GData(bitmap)).asMat(), "ResizeImage"));
-        processors.add(new GraphicsProcessor("GrayScale"));
-        /*SIFTProcessor p = new SIFTProcessor("GenerateSIFT");
-        p.addAdditionaData("images", new String[]{
+        //processors.add(new GraphicsProcessor((new GData(bitmap)).asMat(), "ResizeImage"));
+        processors.add(new GraphicsProcessor((new GData(bitmap)).asMat(),"GrayScale"));
+        //SIFTProcessor p = new SIFTProcessor("GenerateSIFT");
+        /*p.addAdditionaData("images", new String[]{
                 "Germany_0.jpg",
                 "Germany_1.jpg",
                 "Germany_2.jpg"});

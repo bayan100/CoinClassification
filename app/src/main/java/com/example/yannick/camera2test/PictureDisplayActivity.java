@@ -160,6 +160,7 @@ public class PictureDisplayActivity extends AppCompatActivity {
         try {
             //String testpath = "/sdcard/Pictures/Testpictures/otsutest.jpg";
             String testpath = "/sdcard/Pictures/Testpictures/testset/ex00.jpg";
+            //String testpath = "/sdcard/Pictures/Testpictures/trainset/Germany_0.jpg";
             bitmap = BitmapFactory.decodeFile(testpath);
 
             //bitmap = BitmapFactory.decodeStream(this.openFileInput(filepath));
