@@ -63,15 +63,16 @@ public class SIFTProcessor extends GraphicsProcessor {
                 // scale ellipse
                 RotatedRect rect = ellipses.get(0);
                 rect = new RotatedRect(new Point(rect.center.x * (mat.width() / width), rect.center.y * (mat.height() / height)),
-                        new Size(rect.size.width * (mat.width() / width), rect.size.height / (mat.height() / height)), rect.angle);
+                        new Size(rect.size.width * (mat.width() / width), rect.size.height * (mat.height() / height)), rect.angle);
 
                 ellipse = rect;
                 /*FeatureData input = generateSIFTFeatures(mat, rect);
 
                 // match
                 matchAgainstCoins(input);*/
-                Mat m = run();
-                data.setMat(m);
+                //data.setMat(run());
+
+                runFtest();
                 break;
 
             case "GenerateSIFT":
@@ -288,7 +289,7 @@ public class SIFTProcessor extends GraphicsProcessor {
 
         int len = Math.max(d.cols(), d.rows());
         Point pt = new Point(len/2., len/2.);
-        Mat r = Imgproc.getRotationMatrix2D(pt, 40, 1.0);
+        Mat r = Imgproc.getRotationMatrix2D(pt, 20, 1.0);
 
         //Imgproc.warpAffine(d, d, r, new Size(len, len), Imgproc.INTER_LINEAR, BORDER_CONSTANT, new Scalar(255,255,255));
 
@@ -299,8 +300,8 @@ public class SIFTProcessor extends GraphicsProcessor {
         Mat descriptors = new Mat();
 
         //SIFT detector = SIFT.create(0, 3, 0.04, 30, 1.2);
-        //SIFT detector = SIFT.create(256, 3, 0.04, 10, 1.6);
-        Feature2D detector = BRISK.create();
+        SIFT detector = SIFT.create(256, 3, 0.04, 10, 1.6);
+        //Feature2D detector = BRISK.create();
         detector.detectAndCompute(d, mask, keypoints, descriptors);
 
         Log.d("SIFT", "key: " + keypoints.size() + ", desc: " + descriptors.size());
@@ -372,7 +373,7 @@ public class SIFTProcessor extends GraphicsProcessor {
         Log.d("MATCH", "len: " + knnMatches.size());
 
         //-- Filter matches using the Lowe's ratio test
-        float ratioThresh = 1.7f;
+        float ratioThresh = 0.85f;
         List<DMatch> listOfGoodMatches = new ArrayList<>();
         for (int i = 0; i < knnMatches.size(); i++) {
             if (knnMatches.get(i).rows() > 1) {
@@ -392,5 +393,25 @@ public class SIFTProcessor extends GraphicsProcessor {
                 Scalar.all(-1), new MatOfByte(), Features2d.NOT_DRAW_SINGLE_POINTS);
 
         return imgMatches;
+    }
+
+    void runFtest(){
+        Mat d = data.getMat();
+
+        // generate mask form found ellipse
+        Mat mask = Mat.zeros(d.size(), d.type());
+        Imgproc.ellipse(mask, ellipse, new Scalar(255,255,255), -1);
+
+        MatOfKeyPoint keypoints = new MatOfKeyPoint();
+        Mat descriptors = new Mat();
+
+        //SIFT detector = SIFT.create(0, 3, 0.04, 30, 1.2);
+        SIFT detector = SIFT.create(256, 3, 0.04, 10, 1.6);
+        //Feature2D detector = SIFT.create();
+        detector.detectAndCompute(d, mask, keypoints, descriptors);
+
+        Features2d.drawKeypoints(d, keypoints, d);
+
+        data.setMat(d);
     }
 }

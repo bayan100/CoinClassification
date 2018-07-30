@@ -3,8 +3,6 @@ package com.example.yannick.camera2test;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -13,21 +11,21 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 
+import com.example.yannick.camera2test.AGP.AGPBlur;
+import com.example.yannick.camera2test.AGP.AGPCannyEdge;
+import com.example.yannick.camera2test.AGP.AGPContours;
+import com.example.yannick.camera2test.AGP.AGPFindEllipses;
+import com.example.yannick.camera2test.AGP.AGPOtsu;
+import com.example.yannick.camera2test.AGP.AGPSIFT;
 import com.example.yannick.camera2test.Sqlite.DatabaseManager;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
-import org.opencv.android.Utils;
-import org.opencv.core.Mat;
-import org.opencv.imgcodecs.Imgcodecs;
-import org.opencv.imgproc.Imgproc;
 
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 
 public class PictureDisplayActivity extends AppCompatActivity {
@@ -158,13 +156,14 @@ public class PictureDisplayActivity extends AppCompatActivity {
         String filepath = intent.getStringExtra("File");
 
         try {
-            //String testpath = "/sdcard/Pictures/Testpictures/otsutest.jpg";
-            String testpath = "/sdcard/Pictures/Testpictures/testset/ex00.jpg";
+            //String testpath = "/sdcard/Pictures/Testpictures/doubletest.jpg";
+            //String testpath = "/sdcard/Pictures/Testpictures/testset/ex00.jpg";
             //String testpath = "/sdcard/Pictures/Testpictures/trainset/Germany_0.jpg";
-            bitmap = BitmapFactory.decodeFile(testpath);
 
-            //bitmap = BitmapFactory.decodeStream(this.openFileInput(filepath));
-            //bitmap = bitmap.copy( Bitmap.Config.ARGB_8888 , true);
+            //bitmap = BitmapFactory.decodeFile(testpath);
+
+            bitmap = BitmapFactory.decodeStream(this.openFileInput(filepath));
+            bitmap = bitmap.copy( Bitmap.Config.ARGB_8888 , true);
 
             Log.d("SUCCESS", "Loaded: " + filepath);
             imageView.setImageBitmap(bitmap);

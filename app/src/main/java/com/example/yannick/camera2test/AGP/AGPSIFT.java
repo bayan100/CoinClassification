@@ -1,12 +1,13 @@
-package com.example.yannick.camera2test;
+package com.example.yannick.camera2test.AGP;
 
 import android.graphics.Bitmap;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 
+import com.example.yannick.camera2test.GData;
+import com.example.yannick.camera2test.GraphicsProcessor;
+import com.example.yannick.camera2test.SIFTProcessor;
 import com.example.yannick.camera2test.Sqlite.DatabaseManager;
-
-import org.opencv.xfeatures2d.SIFT;
 
 import java.util.ArrayList;
 
@@ -33,6 +34,8 @@ public class AGPSIFT extends AsyncGraphicsProcessor {
         processors.add(p);*/
         processors.add(new SIFTProcessor("SIFT"));
         processors.add(new GraphicsProcessor("ConvertToBitmap"));
+
+
 
         task = processors;
     }

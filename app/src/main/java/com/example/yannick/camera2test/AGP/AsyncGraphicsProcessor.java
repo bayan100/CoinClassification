@@ -1,10 +1,12 @@
-package com.example.yannick.camera2test;
+package com.example.yannick.camera2test.AGP;
 
+import android.app.Activity;
 import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 
+import com.example.yannick.camera2test.GraphicsProcessor;
 import com.example.yannick.camera2test.Sqlite.DatabaseManager;
 
 import java.util.ArrayList;
@@ -16,8 +18,17 @@ public class AsyncGraphicsProcessor extends AsyncTask<Integer, Integer, Integer>
     ProgressBar progressBar;
     ImageView imageView;
     DatabaseManager dbm;
+    Activity activity;
 
     // For a single task
+    public AsyncGraphicsProcessor(GraphicsProcessor task, ProgressBar progressBar, ImageView imageView) {
+        this.task = new ArrayList<GraphicsProcessor>();
+        this.task.add(task);
+
+        this.progressBar = progressBar;
+        this.imageView = imageView;
+    }
+
     public AsyncGraphicsProcessor(GraphicsProcessor task, ProgressBar progressBar, ImageView imageView, DatabaseManager dbm) {
         this.task = new ArrayList<GraphicsProcessor>();
         this.task.add(task);
@@ -27,13 +38,13 @@ public class AsyncGraphicsProcessor extends AsyncTask<Integer, Integer, Integer>
         this.dbm = dbm;
     }
 
-    // chain multiple tasks
-    public AsyncGraphicsProcessor(ArrayList<GraphicsProcessor> tasks, ProgressBar progressBar, ImageView imageView, DatabaseManager dbm) {
-        this.task = tasks;
+    public AsyncGraphicsProcessor(GraphicsProcessor task, ProgressBar progressBar, ImageView imageView, Activity activity) {
+        this.task = new ArrayList<GraphicsProcessor>();
+        this.task.add(task);
 
         this.progressBar = progressBar;
         this.imageView = imageView;
-        this.dbm = dbm;
+        this.activity = activity;
     }
 
     @Override
@@ -42,6 +53,7 @@ public class AsyncGraphicsProcessor extends AsyncTask<Integer, Integer, Integer>
         // run the computational tasks
         for(int i = 0; i < task.size(); i++) {
             task.get(i).passDBM(dbm);
+            task.get(i).passActivity(activity);
             GraphicsProcessor.Status status = task.get(i).execute();
 
             // update progress

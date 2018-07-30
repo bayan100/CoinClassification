@@ -1,9 +1,11 @@
-package com.example.yannick.camera2test;
+package com.example.yannick.camera2test.AGP;
 
 import android.graphics.Bitmap;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 
+import com.example.yannick.camera2test.GData;
+import com.example.yannick.camera2test.GraphicsProcessor;
 import com.example.yannick.camera2test.Sqlite.DatabaseManager;
 
 import java.util.ArrayList;
