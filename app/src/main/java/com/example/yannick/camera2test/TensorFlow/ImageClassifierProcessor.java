@@ -4,7 +4,13 @@ import android.app.Activity;
 import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
 import android.util.Log;
+
+import com.example.yannick.camera2test.GData;
 import com.example.yannick.camera2test.GraphicsProcessor;
+
+import org.opencv.core.Mat;
+import org.opencv.core.Size;
+import org.opencv.imgproc.Imgproc;
 import org.tensorflow.lite.Interpreter;
 
 import java.io.BufferedReader;
@@ -20,7 +26,7 @@ import java.util.List;
 
 public class ImageClassifierProcessor extends GraphicsProcessor {
     private final String MODEL_PATH = "optimized_graph.lite";
-    private final String LABEL_PATH = "labels.txt";
+    private final String LABEL_PATH = "retrained_labels.txt";
 
     private Interpreter tflite;
     private List<String> labelList;
@@ -54,7 +60,16 @@ public class ImageClassifierProcessor extends GraphicsProcessor {
         long starttime = System.nanoTime();
 
         switch (task) {
-
+            case "Classify":
+                try {
+                    loadInterpreter();
+                    prepareImage();
+                    classifyImage();
+                }
+                catch (IOException e){
+                    e.printStackTrace();
+                }
+                break;
         }
 
         // timer stop
@@ -79,7 +94,9 @@ public class ImageClassifierProcessor extends GraphicsProcessor {
         filterLabelProbArray = new float[Math.round(parameter.get("filterStages"))][labelList.size()];
     }
 
-    private void classifyImage(Bitmap bitmap){
+    private void classifyImage(){
+        Bitmap bitmap = data.getBitmap();
+
         // prepare the image
         convertBitmapToByteBuffer(bitmap);
 
@@ -87,7 +104,11 @@ public class ImageClassifierProcessor extends GraphicsProcessor {
         tflite.run(imgData, labelProbArray);
 
         // smooth the results
-        applyFilter();
+        //applyFilter();
+
+        for (int i = 0; i < labelList.size(); i++) {
+            Log.d("TENSOR", labelList.get(i) + ": " + labelProbArray[0][i]);
+        }
     }
 
 
@@ -115,8 +136,8 @@ public class ImageClassifierProcessor extends GraphicsProcessor {
     }
 
     private void convertBitmapToByteBuffer(Bitmap bitmap) {
-        int imageWidth = Math.round(parameter.get("dimImageWidth"));
-        int imageHeight = Math.round(parameter.get("dimImageHeight"));
+        int imageWidth = Math.round(parameter.get("tensorImageWidth"));
+        int imageHeight = Math.round(parameter.get("tensorImageHeight"));
         float imageMean = parameter.get("tensorImageMean");
         float imageSTD = parameter.get("tensorImageSTD");
 
@@ -149,7 +170,6 @@ public class ImageClassifierProcessor extends GraphicsProcessor {
         for (int i = 1; i < filterStages; ++i){
             for(int j = 0; j < num_labels; ++j){
                 filterLabelProbArray[i][j] += filterFactor * (filterLabelProbArray[i - 1][j] - filterLabelProbArray[i][j]);
-
             }
         }
 
@@ -157,5 +177,15 @@ public class ImageClassifierProcessor extends GraphicsProcessor {
         for(int j = 0; j < num_labels; ++j){
             labelProbArray[0][j] = filterLabelProbArray[filterStages - 1][j];
         }
+    }
+
+    private void prepareImage(){
+        // resize
+        Mat material = data.asMat().getMat();
+        Imgproc.resize(material, material,
+                new Size(parameter.get("tensorImageWidth"), parameter.get("tensorImageHeight")),
+                0, 0, Imgproc.INTER_LINEAR);
+        data.setMat(material);
+        data.asBitmap();
     }
 }

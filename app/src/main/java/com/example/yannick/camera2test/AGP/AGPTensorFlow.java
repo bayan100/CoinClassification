@@ -3,6 +3,7 @@ package com.example.yannick.camera2test.AGP;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
+import android.util.Log;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 
@@ -19,8 +20,8 @@ public class AGPTensorFlow extends AsyncGraphicsProcessor {
 
         ArrayList<GraphicsProcessor> processors = new ArrayList<>();
 
-        processors.add(new GraphicsProcessor((new GData(bitmap)).asMat(),"DoNothing"));
-        ImageClassifierProcessor p = new ImageClassifierProcessor("test");
+        processors.add(new GraphicsProcessor(new GData(bitmap),"DoNothing"));
+        ImageClassifierProcessor p = new ImageClassifierProcessor("Classify");
         processors.add(p);
         processors.add(new GraphicsProcessor("ConvertToBitmap"));
 

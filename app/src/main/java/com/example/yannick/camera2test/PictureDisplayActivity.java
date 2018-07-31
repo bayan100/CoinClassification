@@ -1,5 +1,6 @@
 package com.example.yannick.camera2test;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -15,9 +16,10 @@ import com.example.yannick.camera2test.AGP.AGPBlur;
 import com.example.yannick.camera2test.AGP.AGPCannyEdge;
 import com.example.yannick.camera2test.AGP.AGPContours;
 import com.example.yannick.camera2test.AGP.AGPFindEllipses;
-import com.example.yannick.camera2test.AGP.AGPOtsu;
 import com.example.yannick.camera2test.AGP.AGPSIFT;
+import com.example.yannick.camera2test.AGP.AGPTensorFlow;
 import com.example.yannick.camera2test.Sqlite.DatabaseManager;
+import com.example.yannick.camera2test.TensorFlow.ImageClassifierProcessor;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
@@ -30,6 +32,8 @@ import java.util.Date;
 
 public class PictureDisplayActivity extends AppCompatActivity {
 
+    private Activity activity;
+
     private ImageView imageView;
     private ProgressBar progressBar;
 
@@ -37,7 +41,7 @@ public class PictureDisplayActivity extends AppCompatActivity {
 
     private Bitmap bitmap;
 
-    private Button button_blur, button_canny, button_contours, button_ellipses, button_save, button_otsu, button_sift;
+    private Button button_blur, button_canny, button_contours, button_ellipses, button_save, button_tensor, button_sift;
 
     static {
         if (!OpenCVLoader.initDebug()) {
@@ -69,6 +73,7 @@ public class PictureDisplayActivity extends AppCompatActivity {
 
                     // Do manipulation
                     GraphicsProcessor.initParameters();
+                    ImageClassifierProcessor.initParameters();
                     //GraphicsProcessor.parameter.put("MBksize", 7f);
                     //GraphicsProcessor.parameter.put("EDthreshold1", 30f);
                     //GraphicsProcessor.parameter.put("EDthreshold2", 100f);
@@ -89,6 +94,8 @@ public class PictureDisplayActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_picture_display);
+
+        activity = this;
 
         imageView = findViewById(R.id.image_view);
         progressBar = findViewById(R.id.pBar);
@@ -141,9 +148,9 @@ public class PictureDisplayActivity extends AppCompatActivity {
 
             }
         });
-        button_otsu = findViewById(R.id.button_otsu);
-        button_otsu.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { (new AGPOtsu(bitmap, progressBar, imageView, dbm)).execute(); }
+        button_tensor = findViewById(R.id.button_otsu);
+        button_tensor.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) { (new AGPTensorFlow(bitmap, progressBar, imageView, activity)).execute(); }
         });
         button_sift = findViewById(R.id.button_sift);
         button_sift.setOnClickListener(new View.OnClickListener() {
@@ -156,7 +163,7 @@ public class PictureDisplayActivity extends AppCompatActivity {
         String filepath = intent.getStringExtra("File");
 
         try {
-            //String testpath = "/sdcard/Pictures/Testpictures/doubletest.jpg";
+            String testpath = "/sdcard/Pictures/Testpictures/test.jpg";
             //String testpath = "/sdcard/Pictures/Testpictures/testset/ex00.jpg";
             //String testpath = "/sdcard/Pictures/Testpictures/trainset/Germany_0.jpg";
 

@@ -90,6 +90,7 @@ public class GraphicsProcessor
     public void passData(GData data) {
         if(this.data == null)
             this.data = data;
+        Log.d("TENSOR", "pass: bmp == 0: " + (this.getBitmap() == null));
     }
 
     public GData getData() {
@@ -479,17 +480,20 @@ public class GraphicsProcessor
             }
 
             // check if the first Ellipses have similar center (indicating one is the outer and the other the inner ring
-            RotatedRect e0 = ellipses.get(0);
-            Log.d("ELLIPSE", "e0: " + e0.toString());
-            for (int i = 1; i < ellipses.size(); i++) {
-                RotatedRect e1 = ellipses.get(i);
-                Log.d("ELLIPSE", e1.toString());
-                if(Math.sqrt((e1.center.x - e0.center.x) * (e1.center.x - e0.center.x) + (e1.center.y - e0.center.y) * (e1.center.y - e0.center.y)) < 5) {
-                    // search for an ellipse that is bigger by a good margin than the first
-                    if(e0.size.width * e0.size.height < 0.9 * e1.size.width * e1.size.height){
-                        ellipses.set(0, e1);
-                        ellipses.set(i, e0);
-                        break;
+            if(ellipses.size() > 0) {
+                RotatedRect e0 = ellipses.get(0);
+                Log.d("ELLIPSE", "e0: " + e0.toString());
+
+                for (int i = 1; i < ellipses.size(); i++) {
+                    RotatedRect e1 = ellipses.get(i);
+                    Log.d("ELLIPSE", e1.toString());
+                    if (Math.sqrt((e1.center.x - e0.center.x) * (e1.center.x - e0.center.x) + (e1.center.y - e0.center.y) * (e1.center.y - e0.center.y)) < 5) {
+                        // search for an ellipse that is bigger by a good margin than the first
+                        if (e0.size.width * e0.size.height < 0.9 * e1.size.width * e1.size.height) {
+                            ellipses.set(0, e1);
+                            ellipses.set(i, e0);
+                            break;
+                        }
                     }
                 }
             }

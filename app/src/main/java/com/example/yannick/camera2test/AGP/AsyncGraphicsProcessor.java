@@ -62,6 +62,7 @@ public class AsyncGraphicsProcessor extends AsyncTask<Integer, Integer, Integer>
             // task passed, give data to next processor
             if (status == GraphicsProcessor.Status.PASSED) {
                 if (i + 1 < task.size()) {
+                    Log.d("TENSOR", "passing: bmp == 0: " + (task.get(i).getData().getBitmap() == null));
                     task.get(i + 1).passData(task.get(i).getData());
                     task.get(i + 1).passAdditionalData(task.get(i).getAdditionalData());
                 }
